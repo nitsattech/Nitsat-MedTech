@@ -11,13 +11,24 @@ export async function GET(request: NextRequest) {
     const date = sp.get('date');
     const limit = sp.get('limit') || '200';
 
-    let query = `SELECT pr.*, p.uhid, p.first_name, p.last_name, p.phone, p.gender, p.blood_group,
-      p.date_of_birth, p.address, p.city, p.state,
-      d.name as dept_name, doc.name as doctor_name, doc.specialization as doctor_spec
-      FROM patient_registrations pr
-      LEFT JOIN patients p ON pr.patient_id = p.id
-      LEFT JOIN departments d ON pr.department_id = d.id
-      LEFT JOIN doctors doc ON pr.doctor_id = doc.id`;
+    let query = `SELECT 
+  pr.*, 
+  p.uhid, 
+  p.first_name, 
+  p.last_name, 
+  p.phone, 
+  p.gender, 
+  p.blood_group,
+  p.date_of_birth, 
+  p.address, 
+  p.city, 
+  p.state,
+  d.name as dept_name,
+  pr.consultant_name as doctor_name,  -- 🔥 USE SAFE FIELD (NO JOIN DEPENDENCY)
+  NULL as doctor_spec
+  FROM patient_registrations pr
+  LEFT JOIN patients p ON pr.patient_id = p.id
+  LEFT JOIN departments d ON pr.department_id = d.id`;
     const params: any[] = [];
     const where: string[] = [];
 
@@ -76,15 +87,23 @@ export async function POST(request: NextRequest) {
        id_document_type||null, id_document_number||null, tpa_name||null, category||'Cash']
     );
 
-    const regs = await runQuery(
-      `SELECT pr.*, p.uhid, p.first_name, p.last_name, p.phone, p.gender, p.blood_group,
-       d.name as dept_name, doc.name as doctor_name
-       FROM patient_registrations pr
-       LEFT JOIN patients p ON pr.patient_id = p.id
-       LEFT JOIN departments d ON pr.department_id = d.id
-       LEFT JOIN doctors doc ON pr.doctor_id = doc.id
-       WHERE pr.id = ?`, [regId]
-    );
+   const regs = await runQuery(
+  `SELECT 
+     pr.*, 
+     p.uhid, 
+     p.first_name, 
+     p.last_name, 
+     p.phone, 
+     p.gender, 
+     p.blood_group,
+     d.name as dept_name,
+     pr.consultant_name as doctor_name
+   FROM patient_registrations pr
+   LEFT JOIN patients p ON pr.patient_id = p.id
+   LEFT JOIN departments d ON pr.department_id = d.id
+   WHERE pr.id = ?`,
+  [regId]
+);
     return NextResponse.json(regs[0], { status: 201 });
   } catch (error: any) {
     console.error(error);
