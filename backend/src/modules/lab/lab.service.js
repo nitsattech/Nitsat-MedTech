@@ -1,7 +1,12 @@
 import { LabOrder } from './labOrder.model.js';
 import { addBillingItem } from '../billing/billing.service.js';
+import { HMS_EVENTS, hmsEventBus } from '../../utils/eventBus.js';
+import { toReferenceTypeFromVisitType, validateClinicalReference } from '../workflow/reference.service.js';
 
 export async function createLabOrder(payload, userId) {
+  const referenceType = toReferenceTypeFromVisitType(payload.visitType);
+  await validateClinicalReference(referenceType, payload.referenceId, payload.patientId);
+
   const order = await LabOrder.create({
     visitType: payload.visitType,
     referenceId: payload.referenceId,
@@ -16,9 +21,9 @@ export async function createLabOrder(payload, userId) {
     await addBillingItem(
       {
         patientId: payload.patientId,
-        referenceType: payload.visitType === 'opd' ? 'opd_visit' : 'ipd_admission',
+        referenceType,
         referenceId: payload.referenceId,
-        department: payload.department === 'radiology' ? 'radiology' : 'lab',
+        department: payload.department === 'radiology' ? 'radiology' : payload.department === 'pathology' ? 'pathology' : 'lab',
         itemType: 'lab',
         description: payload.testName,
         quantity: 1,
@@ -28,6 +33,15 @@ export async function createLabOrder(payload, userId) {
       userId
     );
   }
+
+  hmsEventBus.emit(HMS_EVENTS.LAB_ORDER_CREATED, {
+    labOrderId: order._id,
+    patientId: order.patientId,
+    referenceType,
+    referenceId: order.referenceId,
+    department: order.department,
+    testName: order.testName,
+  });
 
   return order;
 }

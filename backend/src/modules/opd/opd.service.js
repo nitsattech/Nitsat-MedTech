@@ -3,6 +3,7 @@ import { ApiError } from '../../utils/apiError.js';
 import { OPDVisit } from './opdVisit.model.js';
 import { BillingItem } from '../billing/billingItem.model.js';
 import { getLedger } from '../billing/billing.service.js';
+import { HMS_EVENTS, hmsEventBus } from '../../utils/eventBus.js';
 
 export async function createOpdVisit(payload, userId) {
   const visitDate = new Date(payload.visitDate);
@@ -38,6 +39,14 @@ export async function createOpdVisit(payload, userId) {
       createdBy: userId,
     });
   }
+
+  hmsEventBus.emit(HMS_EVENTS.OPD_VISIT_CREATED, {
+    visitId: visit._id,
+    patientId: visit.patientId,
+    doctorId: visit.doctorId,
+    tokenNumber: visit.tokenNumber,
+    consultationFee: visit.consultationFee,
+  });
 
   return visit;
 }

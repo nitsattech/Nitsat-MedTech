@@ -1,7 +1,21 @@
+import { ApiError } from '../../utils/apiError.js';
 import { PharmacyOrder } from './pharmacyOrder.model.js';
 import { addBillingItem } from '../billing/billing.service.js';
+import { Prescription } from '../prescriptions/prescription.model.js';
+import { HMS_EVENTS, hmsEventBus } from '../../utils/eventBus.js';
+import { toReferenceTypeFromVisitType, validateClinicalReference } from '../workflow/reference.service.js';
 
 export async function createPharmacyOrder(payload, userId) {
+  const referenceType = toReferenceTypeFromVisitType(payload.visitType);
+  await validateClinicalReference(referenceType, payload.referenceId, payload.patientId);
+
+  if (!payload.prescriptionId) {
+    throw new ApiError(400, 'prescriptionId is required for pharmacy order linkage');
+  }
+
+  const prescription = await Prescription.findById(payload.prescriptionId);
+  if (!prescription) throw new ApiError(404, 'Prescription not found');
+
   const items = (payload.items || []).map((item) => ({
     medicineId: item.medicineId,
     medicineName: item.medicineName,
@@ -23,7 +37,7 @@ export async function createPharmacyOrder(payload, userId) {
     await addBillingItem(
       {
         patientId: payload.patientId,
-        referenceType: payload.visitType === 'opd' ? 'opd_visit' : 'ipd_admission',
+        referenceType,
         referenceId: payload.referenceId,
         department: 'pharmacy',
         itemType: 'medicine',
@@ -35,6 +49,15 @@ export async function createPharmacyOrder(payload, userId) {
       userId
     );
   }
+
+  hmsEventBus.emit(HMS_EVENTS.PHARMACY_ORDER_CREATED, {
+    pharmacyOrderId: order._id,
+    prescriptionId: order.prescriptionId,
+    patientId: order.patientId,
+    referenceType,
+    referenceId: order.referenceId,
+    items: order.items,
+  });
 
   return order;
 }

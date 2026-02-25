@@ -17,8 +17,11 @@ import dischargeRoutes from './modules/discharge/discharge.routes.js';
 import reportRoutes from './modules/reports/reports.routes.js';
 import otRoutes from './modules/ot/ot.routes.js';
 import { errorHandler, notFound } from './middleware/errorHandler.js';
+import { registerWorkflowEventHandlers } from './modules/workflow/workflow.events.js';
 
 export const app = express();
+
+registerWorkflowEventHandlers();
 
 app.use(helmet());
 app.use(cors());

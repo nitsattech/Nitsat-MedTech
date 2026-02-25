@@ -1,12 +1,13 @@
 import { ApiError } from '../../utils/apiError.js';
 import { IPDAdmission } from './ipdAdmission.model.js';
 import { getLedger } from '../billing/billing.service.js';
+import { HMS_EVENTS, hmsEventBus } from '../../utils/eventBus.js';
 
 export async function createAdmission(payload, userId) {
   const count = await IPDAdmission.countDocuments();
   const admissionNo = `IPD-${new Date().getFullYear()}-${String(count + 1).padStart(5, '0')}`;
 
-  return IPDAdmission.create({
+  const admission = await IPDAdmission.create({
     patientId: payload.patientId,
     admissionNo,
     admissionDate: payload.admissionDate || new Date(),
@@ -16,7 +17,18 @@ export async function createAdmission(payload, userId) {
     provisionalDiagnosis: payload.provisionalDiagnosis,
     createdBy: userId,
   });
+
+  hmsEventBus.emit(HMS_EVENTS.IPD_ADMISSION_CREATED, {
+    admissionId: admission._id,
+    patientId: admission.patientId,
+    attendingDoctorId: admission.attendingDoctorId,
+    ward: admission.ward,
+    bedNumber: admission.bedNumber,
+  });
+
+  return admission;
 }
+
 
 export async function listAdmissions(filters) {
   const query = {};

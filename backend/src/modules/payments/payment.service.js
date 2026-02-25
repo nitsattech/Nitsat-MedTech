@@ -1,7 +1,11 @@
 import { Payment } from './payment.model.js';
-import { getLedger } from '../billing/billing.service.js';
+import { refreshBillingStatuses } from '../billing/billing.service.js';
+import { validateClinicalReference } from '../workflow/reference.service.js';
+import { HMS_EVENTS, hmsEventBus } from '../../utils/eventBus.js';
 
 export async function collectPayment(payload, userId) {
+  await validateClinicalReference(payload.referenceType, payload.referenceId, payload.patientId);
+
   const payment = await Payment.create({
     patientId: payload.patientId,
     referenceType: payload.referenceType,
@@ -15,7 +19,18 @@ export async function collectPayment(payload, userId) {
     createdBy: userId,
   });
 
-  const ledger = await getLedger(payload.referenceType, payload.referenceId);
+  const ledger = await refreshBillingStatuses(payload.referenceType, payload.referenceId);
+
+  hmsEventBus.emit(HMS_EVENTS.PAYMENT_COLLECTED, {
+    paymentId: payment._id,
+    patientId: payment.patientId,
+    referenceType: payment.referenceType,
+    referenceId: payment.referenceId,
+    amount: payment.amount,
+    paymentMode: payment.paymentMode,
+    ledgerSummary: ledger.summary,
+  });
+
   return { payment, ledger };
 }
 

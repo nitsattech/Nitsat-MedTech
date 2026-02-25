@@ -5,7 +5,7 @@ import { authorizeRoles, protect } from '../../middleware/auth.js';
 const router = Router();
 
 router.use(protect);
-router.get('/', authorizeRoles('admin', 'doctor', 'receptionist', 'nurse'), listDischargeController);
-router.post('/', authorizeRoles('admin', 'doctor', 'receptionist'), createDischargeController);
+router.get('/', authorizeRoles('admin', 'doctor', 'receptionist', 'nurse', 'accountant'), listDischargeController);
+router.post('/', authorizeRoles('admin', 'doctor', 'receptionist', 'accountant'), createDischargeController);
 
 export default router;
