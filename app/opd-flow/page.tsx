@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, CheckCircle2, Circle, Search, UserPlus, Receipt, Wallet, Stethoscope, FlaskConical, Pill, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -15,6 +15,9 @@ interface Consultation { symptoms?: string; diagnosis?: string; prescription_not
 interface LabOrder { id: number; test_name: string; status: string; }
 interface BillItem { id: number; category: string; name: string; amount: number; }
 interface Bill { id: number; total_amount: number; deposit_paid: number; amount_due: number; status: string; }
+interface Doctor { id: number; name: string; specialization?: string; }
+interface Department { id: number; name: string; }
+interface QueueRow { id: number; token_number?: number; opd_visit_status?: string; first_name: string; last_name?: string; uhid: string; }
 
 const stepLabels = [
   'Patient Arrival / Search',
@@ -36,6 +39,10 @@ export default function OPDFlowPage() {
   const [labOrders, setLabOrders] = useState<LabOrder[]>([]);
   const [billItems, setBillItems] = useState<BillItem[]>([]);
   const [bill, setBill] = useState<Bill | null>(null);
+  const [doctors, setDoctors] = useState<Doctor[]>([]);
+  const [departments, setDepartments] = useState<Department[]>([]);
+  const [queueDate, setQueueDate] = useState(new Date().toISOString().slice(0, 10));
+  const [queue, setQueue] = useState<{ waiting: QueueRow[]; in_consultation: QueueRow[]; completed: QueueRow[] }>({ waiting: [], in_consultation: [], completed: [] });
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -47,6 +54,49 @@ export default function OPDFlowPage() {
   const [serviceForm, setServiceForm] = useState({ item_type: 'consultation', name: '', quantity: '1', amount: '' });
   const [labForm, setLabForm] = useState({ test_name: '' });
   const [paymentForm, setPaymentForm] = useState({ amount: '', payment_mode: 'Cash', reference_number: '' });
+
+
+  const loadQueue = async (visitDate?: string) => {
+    try {
+      const date = visitDate || queueDate;
+      const data = await callApi('GET', 'queue', { visitDate: date });
+      setQueue(data.grouped || { waiting: [], in_consultation: [], completed: [] });
+    } catch {
+      // keep silent; queue is optional visual aid
+    }
+  };
+
+  const updateVisitStatus = async (status: 'Waiting' | 'In Consultation' | 'Completed') => {
+    if (!registration) return;
+    setLoading(true);
+    setError('');
+    try {
+      await callApi('POST', 'update-visit-status', { registration_id: registration.id, opd_visit_status: status });
+      await refreshFlow(registration.id);
+      await loadQueue();
+      setSuccess(`Visit moved to ${status}.`);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadMeta = async () => {
+    try {
+      const [docRes, deptRes] = await Promise.all([fetch('/api/doctors'), fetch('/api/departments')]);
+      if (docRes.ok) {
+        const docs = await docRes.json();
+        setDoctors(Array.isArray(docs) ? docs : []);
+      }
+      if (deptRes.ok) {
+        const depts = await deptRes.json();
+        setDepartments(Array.isArray(depts) ? depts : []);
+      }
+    } catch {
+      // non-blocking metadata load
+    }
+  };
 
   const callApi = async (method: 'GET' | 'POST', action: string, payload?: Record<string, any>) => {
     if (method === 'GET') {
@@ -75,6 +125,11 @@ export default function OPDFlowPage() {
     setBillItems(data.billItems || []);
     setBill(data.bill || null);
   };
+
+  useEffect(() => {
+    loadMeta();
+    loadQueue(queueDate);
+  }, []);
 
   const handleSearchPatient = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -114,6 +169,7 @@ export default function OPDFlowPage() {
       });
       await refreshFlow(visit.id);
       setSuccess(`OPD visit created with token #${visit.token_number || '-'}`);
+      await loadQueue(visitForm.visit_date);
     } catch (err: any) { setError(err.message); }
     finally { setLoading(false); }
   };
@@ -284,11 +340,30 @@ export default function OPDFlowPage() {
             <form onSubmit={handleCreateVisit} className="grid grid-cols-2 gap-2">
               <Input type="date" value={visitForm.visit_date} onChange={(e) => setVisitForm((v) => ({ ...v, visit_date: e.target.value }))} required />
               <Input value={visitForm.consultation_fee} onChange={(e) => setVisitForm((v) => ({ ...v, consultation_fee: e.target.value }))} placeholder="Consultation fee" />
-              <Input value={visitForm.doctor_id} onChange={(e) => setVisitForm((v) => ({ ...v, doctor_id: e.target.value }))} placeholder="Doctor ID (optional)" />
-              <Input value={visitForm.department_id} onChange={(e) => setVisitForm((v) => ({ ...v, department_id: e.target.value }))} placeholder="Department ID (optional)" />
+              <Select value={visitForm.doctor_id || 'none'} onValueChange={(v) => setVisitForm((val) => ({ ...val, doctor_id: v === 'none' ? '' : v }))}>
+                <SelectTrigger><SelectValue placeholder="Select Doctor" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">No Doctor</SelectItem>
+                  {doctors.map((d) => (<SelectItem key={d.id} value={String(d.id)}>{d.name}{d.specialization ? ` (${d.specialization})` : ''}</SelectItem>))}
+                </SelectContent>
+              </Select>
+              <Select value={visitForm.department_id || 'none'} onValueChange={(v) => setVisitForm((val) => ({ ...val, department_id: v === 'none' ? '' : v }))}>
+                <SelectTrigger><SelectValue placeholder="Select Department" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">No Department</SelectItem>
+                  {departments.map((d) => (<SelectItem key={d.id} value={String(d.id)}>{d.name}</SelectItem>))}
+                </SelectContent>
+              </Select>
               <Button className="col-span-2" type="submit" disabled={loading || !selectedPatient}>Create Visit</Button>
             </form>
-            {registration && <p className="text-xs text-green-700">Visit ID #{registration.id} • Token #{registration.token_number || '-'} • Queue: {registration.opd_visit_status || 'Waiting'}</p>}
+            {registration && (<>
+              <p className="text-xs text-green-700">Visit ID #{registration.id} • Token #{registration.token_number || '-'} • Queue: {registration.opd_visit_status || 'Waiting'}</p>
+              <div className="flex gap-2">
+                <Button type="button" size="sm" variant="outline" onClick={() => updateVisitStatus('Waiting')} disabled={loading}>Waiting</Button>
+                <Button type="button" size="sm" variant="outline" onClick={() => updateVisitStatus('In Consultation')} disabled={loading}>In Consultation</Button>
+                <Button type="button" size="sm" variant="outline" onClick={() => updateVisitStatus('Completed')} disabled={loading}>Completed</Button>
+              </div>
+            </>)}
           </Card>
 
           <Card className="p-4 space-y-3">
@@ -374,6 +449,40 @@ export default function OPDFlowPage() {
             <p className="text-xs text-slate-500">Completion requires full payment. After completion, visit is closed and can be billed/reported.</p>
           </Card>
         </div>
+
+        <Card className="p-4">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="font-semibold">OPD Token / Queue Board</h3>
+            <div className="flex gap-2 items-center">
+              <Input type="date" value={queueDate} onChange={(e) => setQueueDate(e.target.value)} className="w-auto" />
+              <Button variant="outline" onClick={() => loadQueue(queueDate)} disabled={loading}>Refresh Queue</Button>
+            </div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            {[
+              { key: 'waiting', label: 'Waiting', rows: queue.waiting },
+              { key: 'in_consultation', label: 'In Consultation', rows: queue.in_consultation },
+              { key: 'completed', label: 'Completed', rows: queue.completed },
+            ].map((col) => (
+              <div key={col.key} className="border rounded p-2">
+                <p className="text-sm font-semibold mb-2">{col.label} ({col.rows.length})</p>
+                <div className="space-y-1 max-h-40 overflow-auto">
+                  {col.rows.length === 0 ? (
+                    <p className="text-xs text-slate-400">No patients</p>
+                  ) : (
+                    col.rows.map((r) => (
+                      <button key={r.id} onClick={() => refreshFlow(r.id)} className="w-full text-left border rounded p-1.5 hover:bg-slate-50">
+                        <p className="text-xs font-semibold">Token #{r.token_number || '-'} • {r.first_name} {r.last_name || ''}</p>
+                        <p className="text-[11px] text-slate-500">{r.uhid}</p>
+                      </button>
+                    ))
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </Card>
+
       </main>
     </div>
   );

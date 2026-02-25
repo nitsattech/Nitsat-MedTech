@@ -169,6 +169,38 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ registration, consultation, prescriptions, labOrders, bill, billItems, payments });
     }
 
+
+    if (action === 'queue') {
+      const visitDate = sp.get('visitDate') || new Date().toISOString().split('T')[0];
+      const doctorId = sp.get('doctorId');
+
+      let query = `SELECT pr.id, pr.patient_id, pr.doctor_id, pr.department_id, pr.admission_date, pr.admission_time,
+                          pr.token_number, pr.opd_visit_status, pr.status,
+                          p.uhid, p.first_name, p.last_name, p.phone,
+                          d.name as department_name
+                   FROM patient_registrations pr
+                   LEFT JOIN patients p ON p.id = pr.patient_id
+                   LEFT JOIN departments d ON d.id = pr.department_id
+                   WHERE pr.registration_type = 'OPD' AND pr.admission_date = ?`;
+      const params: any[] = [visitDate];
+
+      if (doctorId) {
+        query += ' AND pr.doctor_id = ?';
+        params.push(Number(doctorId));
+      }
+
+      query += ' ORDER BY COALESCE(pr.token_number, 999999), pr.created_at';
+
+      const rows = await runQuery<any>(query, params);
+      const grouped = {
+        waiting: rows.filter((r) => (r.opd_visit_status || 'Waiting') === 'Waiting'),
+        in_consultation: rows.filter((r) => r.opd_visit_status === 'In Consultation'),
+        completed: rows.filter((r) => r.opd_visit_status === 'Completed'),
+      };
+
+      return NextResponse.json({ date: visitDate, grouped, rows });
+    }
+
     return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
   } catch (error) {
     console.error('OPD workflow GET error:', error);
@@ -182,6 +214,7 @@ export async function POST(request: NextRequest) {
     await ensureOpdSchema();
     const body = await request.json();
     const action = body.action;
+
 
     if (action === 'create-patient') {
       const { first_name, last_name, phone, gender } = body;
@@ -204,6 +237,11 @@ export async function POST(request: NextRequest) {
       const { patient_id, doctor_id, department_id, visit_date, consultation_fee = 0 } = body;
       if (!patient_id || !visit_date) {
         return NextResponse.json({ error: 'patient_id and visit_date are required' }, { status: 400 });
+      }
+
+      const patientRows = await runQuery<any>('SELECT id FROM patients WHERE id = ?', [patient_id]);
+      if (!patientRows.length) {
+        return NextResponse.json({ error: 'Patient not found. Please select a valid patient.' }, { status: 404 });
       }
 
       const tokenRows = await runQuery<any>(
@@ -266,7 +304,9 @@ export async function POST(request: NextRequest) {
 
       await runUpdate(
         `UPDATE patient_registrations
-         SET provisional_diagnosis = ?, procedure_treatment = ?, opd_visit_status = 'In Consultation', updated_at = CURRENT_TIMESTAMP
+         SET provisional_diagnosis = ?, procedure_treatment = ?,
+             opd_visit_status = CASE WHEN COALESCE(opd_visit_status,'Waiting') = 'Completed' THEN opd_visit_status ELSE 'In Consultation' END,
+             updated_at = CURRENT_TIMESTAMP
          WHERE id = ?`,
         [diagnosis || null, advice || null, registration_id]
       );
@@ -383,6 +423,27 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ bill: updatedBill[0] });
     }
 
+
+    if (action === 'update-visit-status') {
+      const { registration_id, opd_visit_status } = body;
+      if (!registration_id || !opd_visit_status) {
+        return NextResponse.json({ error: 'registration_id and opd_visit_status are required' }, { status: 400 });
+      }
+
+      const allowed = new Set(['Waiting', 'In Consultation', 'Completed']);
+      if (!allowed.has(opd_visit_status)) {
+        return NextResponse.json({ error: 'Invalid opd_visit_status' }, { status: 400 });
+      }
+
+      await runUpdate(
+        `UPDATE patient_registrations SET opd_visit_status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
+        [opd_visit_status, registration_id]
+      );
+
+      const row = await runQuery<any>('SELECT * FROM patient_registrations WHERE id = ?', [registration_id]);
+      return NextResponse.json(row[0]);
+    }
+
     if (action === 'complete-visit') {
       const { registration_id } = body;
       if (!registration_id) return NextResponse.json({ error: 'registration_id is required' }, { status: 400 });
@@ -394,7 +455,7 @@ export async function POST(request: NextRequest) {
 
       await runUpdate(
         `UPDATE patient_registrations
-         SET opd_visit_status = 'Completed', status = 'Discharged', updated_at = CURRENT_TIMESTAMP
+         SET opd_visit_status = 'Completed', status = 'Active', updated_at = CURRENT_TIMESTAMP
          WHERE id = ?`,
         [registration_id]
       );
