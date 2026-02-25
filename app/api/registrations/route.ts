@@ -1,10 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { runQuery, runInsert, initializeDatabase } from '@/lib/db';
 
+async function ensureDischargeWorkflowColumns() {
+  const columns = await runQuery<{ name: string }>(`PRAGMA table_info(patient_registrations)`);
+  const names = new Set(columns.map((column) => column.name));
+
+  if (!names.has('pharmacy_clearance')) {
+    await runInsert(`ALTER TABLE patient_registrations ADD COLUMN pharmacy_clearance INTEGER DEFAULT 0`);
+  }
+
+  if (!names.has('doctor_summary_complete')) {
+    await runInsert(`ALTER TABLE patient_registrations ADD COLUMN doctor_summary_complete INTEGER DEFAULT 0`);
+  }
+}
+
 export async function GET(request: NextRequest) {
   try {
     await initializeDatabase();
+    await ensureDischargeWorkflowColumns();
     const sp = request.nextUrl.searchParams;
+    const registrationId = sp.get('registrationId');
     const patientId = sp.get('patientId');
     const status = sp.get('status');
     const type = sp.get('type');
@@ -24,14 +39,24 @@ export async function GET(request: NextRequest) {
   p.city, 
   p.state,
   d.name as dept_name,
-  pr.consultant_name as doctor_name,  -- 🔥 USE SAFE FIELD (NO JOIN DEPENDENCY)
-  NULL as doctor_spec
+  pr.consultant_name as doctor_name,
+  NULL as doctor_spec,
+  b.id as bill_id,
+  b.bill_number,
+  b.total_amount as bill_total_amount,
+  b.deposit_paid as bill_deposit_paid,
+  b.amount_due as bill_amount_due,
+  b.status as bill_status,
+  COALESCE(pr.pharmacy_clearance, 0) as pharmacy_clearance,
+  COALESCE(pr.doctor_summary_complete, 0) as doctor_summary_complete
   FROM patient_registrations pr
   LEFT JOIN patients p ON pr.patient_id = p.id
-  LEFT JOIN departments d ON pr.department_id = d.id`;
+  LEFT JOIN departments d ON pr.department_id = d.id
+  LEFT JOIN billing b ON b.registration_id = pr.id`;
     const params: any[] = [];
     const where: string[] = [];
 
+    if (registrationId) where.push('pr.id = ?'), params.push(registrationId);
     if (patientId) where.push('pr.patient_id = ?'), params.push(patientId);
     if (status) where.push('pr.status = ?'), params.push(status);
     if (type) where.push('pr.registration_type = ?'), params.push(type);

@@ -421,6 +421,7 @@ function BillingContent() {
   const router = useRouter();
   const regIdParam = sp.get('registrationId');
   const uhidParam = sp.get('uhid');
+  const autoPrintParam = sp.get('autoPrint');
 
   const [recentPatients, setRecentPatients] = useState<Patient[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
@@ -465,8 +466,39 @@ function BillingContent() {
     fetch('/api/patients').then(r=>r.json()).then(d=>setRecentPatients(Array.isArray(d)?d.slice(0,10):[])).catch(()=>{});
     fetch('/api/departments').then(r=>r.json()).then(d=>setDepartments(Array.isArray(d)?d:[])).catch(()=>{});
     if (uhidParam) fetch(`/api/patients?search=${encodeURIComponent(uhidParam)}`).then(r=>r.json()).then(d=>{if(d.length>0)selectPatient(d[0]);}).catch(()=>{});
-    else if (regIdParam) loadBill(parseInt(regIdParam));
+    else if (regIdParam) loadRegistrationContext(parseInt(regIdParam));
   }, []);
+
+
+  const loadRegistrationContext = async (regId: number) => {
+    try {
+      const res = await fetch(`/api/registrations?registrationId=${regId}&limit=1`);
+      if (res.ok) {
+        const regs: Registration[] = await res.json();
+        if (regs.length > 0) {
+          const reg = regs[0] as Registration & any;
+          setRegistrations(regs);
+          setSelectedRegId(reg.id);
+          setPatient({
+            id: reg.patient_id,
+            uhid: reg.uhid,
+            first_name: reg.first_name,
+            last_name: reg.last_name,
+            phone: reg.phone,
+            gender: reg.gender,
+            date_of_birth: reg.date_of_birth,
+            address: reg.address,
+            city: reg.city,
+            state: reg.state,
+            blood_group: reg.blood_group,
+            created_at: reg.created_at,
+          });
+        }
+      }
+    } catch {}
+
+    await loadBill(regId);
+  };
 
   const selectPatient = async (p: Patient) => {
     setPatient(p); setSearchTerm(''); setShowResults(false); setSearchResults([]);
@@ -504,6 +536,9 @@ function BillingContent() {
       setBill(data.bill); setItems(data.items || []); setPayments(data.payments || []);
       setGstPercent(String(data.bill.gst_percent || 0));
       setShowCreateBill(false);
+      if (autoPrintParam === '1' && data.bill?.status === 'Paid') {
+        setShowPrint(true);
+      }
     }
   };
 
@@ -566,6 +601,7 @@ function BillingContent() {
       setPayForm({amount:'',payment_mode:'Cash',reference_number:''});
       setShowPayForm(false);
       setSuccess('Payment recorded!'); setTimeout(()=>setSuccess(''),3000);
+      if (autoPrintParam === '1' && data.bill?.status === 'Paid') setShowPrint(true);
     } catch { setError('Error'); } finally { setLoading(false); }
   };
 

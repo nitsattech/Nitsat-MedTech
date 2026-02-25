@@ -13,7 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { ArrowLeft, Plus, Trash2, CheckCircle } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, CheckCircle, Receipt, Workflow } from 'lucide-react';
 
 interface Investigation {
   id: number;
@@ -121,7 +121,7 @@ export default function InvestigationsPage() {
           </Button>
           <div>
             <h1 className="text-2xl font-bold text-foreground">Laboratory Investigations</h1>
-            <p className="text-xs text-muted-foreground">Manage laboratory tests and investigations</p>
+            <p className="text-xs text-muted-foreground">Manage laboratory tests and investigations for a registration</p>
           </div>
         </div>
       </header>
@@ -129,14 +129,30 @@ export default function InvestigationsPage() {
       {/* Main Content */}
       <main className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {!registrationId ? (
-          <Alert>
-            <AlertDescription>Please select a patient registration first</AlertDescription>
-          </Alert>
+          <div className="space-y-4">
+            <Alert>
+              <AlertDescription>Please select a patient registration first</AlertDescription>
+            </Alert>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => router.push('/ipd-workflow')}><Workflow className="w-4 h-4 mr-2" />Open IPD Workflow</Button>
+              <Button onClick={() => router.push('/patient-registration')}>Open Patient Registration</Button>
+            </div>
+          </div>
         ) : (
           <div className="space-y-6">
             {/* Add Investigation Form */}
             <Card className="p-6">
-              <h2 className="text-xl font-bold text-foreground mb-6">Add Investigation</h2>
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-xl font-bold text-foreground">Add Investigation</h2>
+                <div className="flex gap-2">
+                  <Button variant="outline" size="sm" onClick={() => router.push(`/ipd-workflow`)}>
+                    <Workflow className="w-4 h-4 mr-1" />IPD Flow
+                  </Button>
+                  <Button size="sm" onClick={() => router.push(`/billing?registrationId=${registrationId}`)}>
+                    <Receipt className="w-4 h-4 mr-1" />Billing Ledger
+                  </Button>
+                </div>
+              </div>
 
               <form onSubmit={handleAddInvestigation} className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
