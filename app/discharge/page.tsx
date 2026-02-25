@@ -20,12 +20,14 @@ interface RegistrationRow {
   phone?: string;
   dept_name?: string;
   consultant_name?: string;
+
   bill_id?: number;
   bill_number?: string;
   bill_total_amount?: number;
   bill_deposit_paid?: number;
   bill_amount_due?: number;
   bill_status?: string;
+
 }
 
 export default function DischargePage() {
@@ -79,15 +81,19 @@ export default function DischargePage() {
       });
 
       if (!response.ok) {
+
         const data = await response.json();
         setError(data.error || 'Failed to discharge patient');
+
         throw new Error('Failed to discharge patient');
       }
 
       setRows((prev) => prev.filter((row) => row.id !== id));
       router.push(`/billing?registrationId=${id}`);
     } catch (err) {
+
       // error already surfaced from API response when available
+
     } finally {
       setSavingId(null);
     }
@@ -156,6 +162,7 @@ export default function DischargePage() {
                     <td className="px-4 py-3">{row.consultant_name || '-'}</td>
                     <td className="px-4 py-3 text-right">
                       <div className="flex justify-end gap-2">
+
                         {row.bill_id ? (
                           <div className="text-right mr-2">
                             <p className="text-xs text-muted-foreground">Bill: {row.bill_number}</p>
@@ -175,21 +182,27 @@ export default function DischargePage() {
                         >
                           <ReceiptText className="w-4 h-4 mr-1" />
                           {row.bill_id ? 'Open Bill' : 'Create Bill'}
+=
                         </Button>
                         <Button
                           size="sm"
                           onClick={() => markDischarged(row.id)}
+
                           disabled={savingId === row.id || !row.bill_id || (row.bill_amount_due || 0) > 0}
+
+
                         >
                           <LogOut className="w-4 h-4 mr-1" />
                           {savingId === row.id ? 'Processing...' : 'Discharge'}
                         </Button>
                       </div>
+
                       {(!row.bill_id || (row.bill_amount_due || 0) > 0) && (
                         <p className="text-[11px] text-orange-600 mt-1">
                           Discharge allowed only after full bill payment.
                         </p>
                       )}
+
                     </td>
                   </tr>
                 ))

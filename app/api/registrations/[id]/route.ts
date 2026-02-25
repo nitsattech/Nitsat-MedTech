@@ -13,6 +13,7 @@ export async function PUT(
     const status = body.status || 'Discharged';
     const dischargeDate = body.discharge_date || new Date().toISOString().slice(0, 10);
 
+
     const existingRegs = await runQuery<any>('SELECT * FROM patient_registrations WHERE id = ?', [id]);
     if (!existingRegs.length) {
       return NextResponse.json({ error: 'Registration not found' }, { status: 404 });
@@ -41,9 +42,11 @@ export async function PUT(
     }
 
     await runUpdate(
+
       'UPDATE patient_registrations SET status = ?, discharge_date = ? WHERE id = ?',
       [status, dischargeDate, id]
     );
+
 
     const updated = await runQuery(
       `SELECT pr.*, p.uhid, p.first_name, p.last_name, p.phone,
@@ -52,6 +55,7 @@ export async function PUT(
        FROM patient_registrations pr
        LEFT JOIN patients p ON p.id = pr.patient_id
        LEFT JOIN billing b ON b.registration_id = pr.id
+
        WHERE pr.id = ?`,
       [id]
     );
