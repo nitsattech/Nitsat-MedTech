@@ -37,7 +37,7 @@ const departmentIcons: Record<string, React.ReactNode> = {
 
 const moduleRoutes: Record<string, string> = {
   'OPD': '/opd-flow',
-  'IPD': '/ipd-workflow',
+  'IPD': '/patient-registration',
   'Medicines': '/pharmacy',
   'Investigation': '/investigations',
   'Cardiology': '/patient-registration',
@@ -193,7 +193,7 @@ export default function DashboardPage() {
                   <h3 className="font-semibold text-foreground text-lg">{dept.name}</h3>
                   <p className="text-xs text-muted-foreground mt-1">
                     {dept.name === 'OPD' && 'OPD end-to-end workflow'}
-                    {dept.name === 'IPD' && 'In-Patient workflow dashboard'}
+                    {dept.name === 'IPD' && 'In Patient Department'}
                     {dept.name === 'Medicines' && 'Pharmacy Inventory & Dispensing'}
                     {dept.name === 'Investigation' && 'Laboratory & Diagnostic Tests'}
                     {dept.name === 'Billing' && 'Billing & Payments'}

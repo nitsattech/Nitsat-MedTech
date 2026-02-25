@@ -259,7 +259,8 @@ export default function OPDFlowPage() {
     try {
       await callApi('POST', 'complete-visit', { registration_id: registration.id });
       await refreshFlow(registration.id);
-      setSuccess('OPD visit closed successfully.');
+      setSuccess('OPD visit closed successfully. Opening bill print...');
+      router.push(`/billing?registrationId=${registration.id}&autoPrint=1`);
     } catch (err: any) { setError(err.message); }
     finally { setLoading(false); }
   };
