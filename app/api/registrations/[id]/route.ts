@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { initializeDatabase, runQuery, runUpdate } from '@/lib/db';
 
+main
 async function ensureDischargeWorkflowColumns() {
   const columns = await runQuery<{ name: string }>(`PRAGMA table_info(patient_registrations)`);
   const names = new Set(columns.map((column) => column.name));
@@ -14,12 +15,14 @@ async function ensureDischargeWorkflowColumns() {
   }
 }
 
+
 export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await initializeDatabase();
+
     await ensureDischargeWorkflowColumns();
 
     const { id } = await params;
@@ -108,6 +111,7 @@ export async function PUT(
        WHERE pr.id = ?
        ORDER BY b.created_at DESC
        LIMIT 1`,
+
       [id]
     );
 

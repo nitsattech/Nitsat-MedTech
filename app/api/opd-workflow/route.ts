@@ -196,6 +196,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json(orders);
     }
 
+
     if (action === 'queue') {
       const visitDate = sp.get('visitDate') || new Date().toISOString().split('T')[0];
       const doctorId = sp.get('doctorId');

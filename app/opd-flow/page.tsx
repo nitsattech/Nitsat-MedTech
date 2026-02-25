@@ -15,6 +15,7 @@ import {
   Users,
   BadgeIndianRupee,
 } from 'lucide-react';
+
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -25,6 +26,7 @@ interface Patient { id: number; uhid: string; first_name: string; last_name?: st
 interface Registration { id: number; token_number?: number; opd_visit_status?: string; status: string; admission_date: string; }
 interface Consultation { symptoms?: string; diagnosis?: string; prescription_notes?: string; advice?: string; follow_up_date?: string; }
 interface LabOrder { id: number; test_name: string; status: string; registration_id: number; uhid?: string; first_name?: string; last_name?: string; token_number?: number; }
+
 interface BillItem { id: number; category: string; name: string; amount: number; }
 interface Bill { id: number; total_amount: number; deposit_paid: number; amount_due: number; status: string; }
 interface Doctor { id: number; name: string; specialization?: string; }
@@ -33,6 +35,7 @@ interface QueueRow { id: number; token_number?: number; opd_visit_status?: strin
 
 export default function OPDFlowPage() {
   const router = useRouter();
+
 
   const [search, setSearch] = useState('');
   const [patients, setPatients] = useState<Patient[]>([]);
@@ -43,6 +46,7 @@ export default function OPDFlowPage() {
   const [labDashboardOrders, setLabDashboardOrders] = useState<LabOrder[]>([]);
   const [billItems, setBillItems] = useState<BillItem[]>([]);
   const [bill, setBill] = useState<Bill | null>(null);
+
 
   const [doctors, setDoctors] = useState<Doctor[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
@@ -55,6 +59,7 @@ export default function OPDFlowPage() {
 
   const [newPatient, setNewPatient] = useState({ first_name: '', last_name: '', phone: '', gender: 'Male' });
   const [autoVisitOnCreate, setAutoVisitOnCreate] = useState(true);
+
   const [visitForm, setVisitForm] = useState({ doctor_id: '', department_id: '', visit_date: new Date().toISOString().slice(0, 10), consultation_fee: '300' });
   const [consultForm, setConsultForm] = useState({ symptoms: '', diagnosis: '', prescription_notes: '', advice: '', follow_up_date: '' });
   const [serviceForm, setServiceForm] = useState({ item_type: 'consultation', name: '', quantity: '1', amount: '' });
@@ -89,6 +94,7 @@ export default function OPDFlowPage() {
     setBill(data.bill || null);
   };
 
+
   const loadQueue = async (visitDate?: string) => {
     try {
       const date = visitDate || queueDate;
@@ -106,6 +112,7 @@ export default function OPDFlowPage() {
       setLabDashboardOrders(Array.isArray(data) ? data : []);
     } catch {
       // optional board
+
     }
   };
 
@@ -123,12 +130,14 @@ export default function OPDFlowPage() {
     } catch {
       // non-blocking
     }
+
   };
 
   useEffect(() => {
     loadMeta();
     loadQueue(queueDate);
     loadLabDashboard(queueDate);
+
   }, []);
 
   const handleSearchPatient = async (e: React.FormEvent) => {
@@ -136,6 +145,7 @@ export default function OPDFlowPage() {
     if (!search.trim()) return;
     setLoading(true);
     setError('');
+
     try {
       const data = await callApi('GET', 'search-patients', { search: search.trim() });
       setPatients(data);
@@ -144,12 +154,14 @@ export default function OPDFlowPage() {
     } finally {
       setLoading(false);
     }
+
   };
 
   const handleCreatePatient = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError('');
+
     try {
       const patient = await callApi('POST', 'create-patient', newPatient);
       setPatients((prev) => [patient, ...prev]);
@@ -174,6 +186,7 @@ export default function OPDFlowPage() {
     } finally {
       setLoading(false);
     }
+
   };
 
   const handleCreateVisit = async (e: React.FormEvent) => {
@@ -181,6 +194,7 @@ export default function OPDFlowPage() {
     if (!selectedPatient) return;
     setLoading(true);
     setError('');
+
     try {
       const visit = await callApi('POST', 'create-opd-visit', {
         patient_id: selectedPatient.id,
@@ -213,6 +227,7 @@ export default function OPDFlowPage() {
     } finally {
       setLoading(false);
     }
+
   };
 
   const handleSaveConsultation = async (e: React.FormEvent) => {
@@ -230,6 +245,7 @@ export default function OPDFlowPage() {
     } finally {
       setLoading(false);
     }
+
   };
 
   const handleAddService = async (e: React.FormEvent) => {
@@ -237,6 +253,7 @@ export default function OPDFlowPage() {
     if (!registration) return;
     setLoading(true);
     setError('');
+
     try {
       await callApi('POST', 'add-billing-item', {
         registration_id: registration.id,
@@ -260,6 +277,7 @@ export default function OPDFlowPage() {
     } finally {
       setLoading(false);
     }
+
   };
 
   const handleAddLabOrder = async (e: React.FormEvent) => {
@@ -267,6 +285,7 @@ export default function OPDFlowPage() {
     if (!registration) return;
     setLoading(true);
     setError('');
+
     try {
       await callApi('POST', 'add-lab-order', { registration_id: registration.id, test_name: labForm.test_name });
       setLabForm({ test_name: '' });
@@ -278,6 +297,7 @@ export default function OPDFlowPage() {
     } finally {
       setLoading(false);
     }
+
   };
 
   const handleUpdateLabStatus = async (orderId: number, status: string) => {
@@ -293,6 +313,7 @@ export default function OPDFlowPage() {
     } finally {
       setLoading(false);
     }
+
   };
 
   const handleCollectPayment = async (e: React.FormEvent) => {
@@ -300,6 +321,7 @@ export default function OPDFlowPage() {
     if (!registration) return;
     setLoading(true);
     setError('');
+
     try {
       await callApi('POST', 'collect-payment', {
         registration_id: registration.id,
@@ -315,6 +337,7 @@ export default function OPDFlowPage() {
     } finally {
       setLoading(false);
     }
+
   };
 
   const handleCompleteVisit = async () => {
@@ -340,6 +363,7 @@ export default function OPDFlowPage() {
       ? 'bg-orange-50 border-orange-200 text-orange-700'
       : 'bg-red-50 border-red-200 text-red-700';
 
+
   return (
     <div className="min-h-screen bg-slate-100">
       <header className="bg-white border-b shadow-sm sticky top-0 z-40">
@@ -348,6 +372,7 @@ export default function OPDFlowPage() {
           <div>
             <h1 className="font-bold text-slate-800">OPD Workflow - Professional HMS</h1>
             <p className="text-xs text-slate-500">Operator friendly panel for OPD registration, consultation, lab, billing and payment.</p>
+
           </div>
         </div>
       </header>
@@ -362,12 +387,14 @@ export default function OPDFlowPage() {
               <h2 className="font-semibold text-lg">Patient Search / Create</h2>
               {selectedPatient && <p className="text-xs text-blue-700 font-semibold">Selected: {selectedPatient.first_name} ({selectedPatient.uhid})</p>}
             </div>
+
             <form onSubmit={handleSearchPatient} className="flex gap-2">
               <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search by UHID / name / phone" />
               <Button type="submit" disabled={loading}><Search className="w-4 h-4 mr-1" />Search</Button>
             </form>
             <div className="max-h-40 overflow-auto space-y-2">
               {patients.length === 0 ? <p className="text-xs text-slate-400">No patient list yet. Search or create a patient.</p> : patients.map((p) => (
+
                 <button key={p.id} onClick={() => setSelectedPatient(p)} className={`w-full text-left p-2 rounded border ${selectedPatient?.id === p.id ? 'border-blue-500 bg-blue-50' : 'border-slate-200'}`}>
                   <p className="font-semibold text-sm">{p.first_name} {p.last_name || ''}</p>
                   <p className="text-xs text-slate-500">{p.uhid} • {p.phone || '-'}</p>
@@ -412,6 +439,7 @@ export default function OPDFlowPage() {
                 </div>
               </div>
 
+
               <Button type="submit" className="col-span-2" disabled={loading}><UserPlus className="w-4 h-4 mr-1" />Create Patient</Button>
             </form>
           </Card>
@@ -438,6 +466,7 @@ export default function OPDFlowPage() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           <Card className="p-4 space-y-3">
             <h3 className="font-semibold">Doctor Consultation</h3>
+
             <form onSubmit={handleSaveConsultation} className="grid grid-cols-2 gap-2">
               <Input value={consultForm.symptoms} onChange={(e) => setConsultForm((v) => ({ ...v, symptoms: e.target.value }))} placeholder="Symptoms" />
               <Input value={consultForm.diagnosis} onChange={(e) => setConsultForm((v) => ({ ...v, diagnosis: e.target.value }))} placeholder="Diagnosis" />
@@ -450,6 +479,7 @@ export default function OPDFlowPage() {
 
           <Card className="p-4 space-y-3">
             <h3 className="font-semibold">Add Services / Lab / Medicine</h3>
+
             <form onSubmit={handleAddService} className="grid grid-cols-2 gap-2">
               <Select value={serviceForm.item_type} onValueChange={(v) => setServiceForm((s) => ({ ...s, item_type: v }))}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
@@ -492,6 +522,7 @@ export default function OPDFlowPage() {
               <div className="p-2 rounded bg-white/70 border"><p className="text-xs">Status</p><p className="font-bold text-lg">{bill?.status || 'Unpaid'}</p></div>
             </div>
             <div className="max-h-36 overflow-auto border rounded p-2 space-y-1 bg-white/80">
+
               {billItems.map((item) => (
                 <p key={item.id} className="text-xs">{item.name} ({item.category}) - ₹{Number(item.amount).toFixed(2)}</p>
               ))}
@@ -501,6 +532,7 @@ export default function OPDFlowPage() {
 
           <Card className="p-4 space-y-3">
             <h3 className="font-semibold">Payment & OPD Closure</h3>
+
             <form onSubmit={handleCollectPayment} className="grid grid-cols-2 gap-2">
               <Input value={paymentForm.amount} onChange={(e) => setPaymentForm((v) => ({ ...v, amount: e.target.value }))} placeholder="Payment amount" required />
               <Select value={paymentForm.payment_mode} onValueChange={(v) => setPaymentForm((s) => ({ ...s, payment_mode: v }))}>
@@ -516,6 +548,7 @@ export default function OPDFlowPage() {
               <Button type="submit" disabled={loading || !registration}><Wallet className="w-4 h-4 mr-1" />Collect Payment</Button>
               <Button type="button" onClick={handleCompleteVisit} disabled={loading || !registration || bill?.status !== 'Paid'}><FileText className="w-4 h-4 mr-1" />Complete OPD Visit</Button>
             </form>
+
           </Card>
         </div>
 
@@ -525,6 +558,7 @@ export default function OPDFlowPage() {
             <div className="flex gap-2 items-center">
               <Input type="date" value={queueDate} onChange={(e) => setQueueDate(e.target.value)} className="w-auto" />
               <Button variant="outline" onClick={() => { loadQueue(queueDate); loadLabDashboard(queueDate); }} disabled={loading}>Refresh</Button>
+
             </div>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
@@ -542,6 +576,7 @@ export default function OPDFlowPage() {
                       <p className="text-[11px] text-slate-500">{r.uhid}</p>
                     </button>
                   ))}
+
                 </div>
               </div>
             ))}
@@ -569,6 +604,7 @@ export default function OPDFlowPage() {
             )}
           </div>
         </Card>
+
       </main>
     </div>
   );

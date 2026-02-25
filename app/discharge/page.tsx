@@ -2,11 +2,13 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { ArrowLeft, Search, LogOut, ReceiptText, CheckCircle2, ClipboardCheck } from 'lucide-react';
+
 
 interface RegistrationRow {
   id: number;
@@ -20,6 +22,7 @@ interface RegistrationRow {
   phone?: string;
   dept_name?: string;
   consultant_name?: string;
+
   bill_id?: number;
   bill_number?: string;
   bill_total_amount?: number;
@@ -28,12 +31,14 @@ interface RegistrationRow {
   bill_status?: string;
   pharmacy_clearance?: number;
   doctor_summary_complete?: number;
+
 }
 
 export default function DischargePage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const registrationId = searchParams.get('registrationId');
+
   const [rows, setRows] = useState<RegistrationRow[]>([]);
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
@@ -44,12 +49,14 @@ export default function DischargePage() {
     setLoading(true);
     setError('');
     try {
+
       const query = registrationId ? `registrationId=${registrationId}` : 'status=Active';
       const response = await fetch(`/api/registrations?${query}&limit=500`);
       if (!response.ok) throw new Error('Failed to load active registrations');
       const data = await response.json();
       setRows(Array.isArray(data) ? data : []);
     } catch {
+
       setError('Unable to load active registrations right now.');
     } finally {
       setLoading(false);
@@ -60,6 +67,7 @@ export default function DischargePage() {
     loadRows();
   }, [registrationId]);
 
+
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     if (!q) return rows;
@@ -69,6 +77,7 @@ export default function DischargePage() {
         .some((value) => String(value).toLowerCase().includes(q))
     );
   }, [rows, search]);
+
 
   const updateClearance = async (row: RegistrationRow, field: 'pharmacy_clearance' | 'doctor_summary_complete') => {
     setSavingId(row.id);
@@ -112,6 +121,7 @@ export default function DischargePage() {
     }
   };
 
+
   const markDischarged = async (id: number) => {
     setSavingId(id);
     setError('');
@@ -125,6 +135,7 @@ export default function DischargePage() {
         }),
       });
 
+
       const data = await response.json();
       if (!response.ok) {
         setError(data.error || 'Failed to discharge patient');
@@ -135,6 +146,7 @@ export default function DischargePage() {
       router.push(`/billing?registrationId=${id}&autoPrint=1`);
     } catch {
       setError('Could not complete discharge right now.');
+
     } finally {
       setSavingId(null);
     }
@@ -150,6 +162,7 @@ export default function DischargePage() {
           <div>
             <h1 className="text-2xl font-bold text-foreground">Discharge Management</h1>
             <p className="text-xs text-muted-foreground">Discharge only after Pharmacy Clearance + Doctor Summary + Billing Paid.</p>
+
           </div>
         </div>
       </header>
@@ -184,11 +197,13 @@ export default function DischargePage() {
                 <th className="px-4 py-3 text-left">Patient</th>
                 <th className="px-4 py-3 text-left">Admission</th>
                 <th className="px-4 py-3 text-left">Checklist</th>
+
                 <th className="px-4 py-3 text-right">Actions</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
+
                 <tr><td className="px-4 py-8 text-center text-muted-foreground" colSpan={5}>Loading active admissions…</td></tr>
               ) : filtered.length === 0 ? (
                 <tr><td className="px-4 py-8 text-center text-muted-foreground" colSpan={5}>No active admissions found.</td></tr>
@@ -257,6 +272,7 @@ export default function DischargePage() {
                     </tr>
                   );
                 })
+
               )}
             </tbody>
           </table>
