@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -43,7 +43,15 @@ const moduleRoutes: Record<string, string> = {
   'Cardiology': '/patient-registration',
   'Billing': '/billing',
   'Pathology': '/investigations',
-  'Services': '/patient-registration'
+  'Services': '/patient-registration',
+  'Payment': '/billing',
+  'Discharge': '/discharge',
+  'MIS': '/mis',
+  'Sonography': '/investigations',
+  'Radiology': '/investigations',
+  'File': '/patients',
+  'O.T.': '/patient-registration',
+  'Gastrology': '/patient-registration'
 };
 
 const demoDepartments: Department[] = [
@@ -66,8 +74,8 @@ const demoDepartments: Department[] = [
 ];
 
 export default function DashboardPage() {
-  const [departments, setDepartments] = useState<Department[]>(demoDepartments);
-  const [loading, setLoading] = useState(false);
+  const [departments] = useState<Department[]>(demoDepartments);
+  const loading = false;
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const router = useRouter();
 
@@ -186,10 +194,11 @@ export default function DashboardPage() {
                   <p className="text-xs text-muted-foreground mt-1">
                     {dept.name === 'OPD' && 'Out Patient Department'}
                     {dept.name === 'IPD' && 'In Patient Department'}
-                    {dept.name === 'Pharmacy' && 'Medicine Management'}
-                    {dept.name === 'Lab' && 'Laboratory Tests'}
+                    {dept.name === 'Medicines' && 'Pharmacy Inventory & Dispensing'}
+                    {dept.name === 'Investigation' && 'Laboratory & Diagnostic Tests'}
                     {dept.name === 'Billing' && 'Billing & Payments'}
-                    {dept.name === 'Surgery' && 'Surgical Services'}
+                    {dept.name === 'Discharge' && 'Discharge and billing clearance'}
+                    {dept.name === 'MIS' && 'Daily hospital reports and analytics'}
                   </p>
                 </div>
               </div>
