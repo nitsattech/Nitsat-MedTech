@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
@@ -32,6 +32,8 @@ interface RegistrationRow {
 
 export default function DischargePage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const registrationId = searchParams.get('registrationId');
   const [rows, setRows] = useState<RegistrationRow[]>([]);
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
@@ -42,7 +44,8 @@ export default function DischargePage() {
     setLoading(true);
     setError('');
     try {
-      const response = await fetch('/api/registrations?status=Active&limit=500');
+      const query = registrationId ? `registrationId=${registrationId}` : 'status=Active';
+      const response = await fetch(`/api/registrations?${query}&limit=500`);
       if (!response.ok) throw new Error('Failed to load active registrations');
       const data = await response.json();
       setRows(Array.isArray(data) ? data : []);
@@ -55,7 +58,7 @@ export default function DischargePage() {
 
   useEffect(() => {
     loadRows();
-  }, []);
+  }, [registrationId]);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();

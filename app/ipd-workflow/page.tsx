@@ -51,6 +51,7 @@ export default function IPDWorkflowPage() {
   const [patients, setPatients] = useState<Patient[]>([]);
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
   const [registration, setRegistration] = useState<Registration | null>(null);
+  const [selectedRegId, setSelectedRegId] = useState<number | null>(null);
   const [bill, setBill] = useState<Bill | null>(null);
   const [serviceCount, setServiceCount] = useState(0);
 
@@ -59,6 +60,7 @@ export default function IPDWorkflowPage() {
     setLoadingFlow(true);
     setError('');
     setRegistration(null);
+    setSelectedRegId(null);
     setBill(null);
     setServiceCount(0);
 
@@ -74,6 +76,7 @@ export default function IPDWorkflowPage() {
       }
 
       setRegistration(latest);
+      setSelectedRegId(latest.id);
 
       const billRes = await fetch(`/api/billing?registrationId=${latest.id}`);
       if (billRes.ok) {
@@ -245,10 +248,10 @@ export default function IPDWorkflowPage() {
             <div className="mt-5 grid grid-cols-2 md:grid-cols-4 gap-2">
               <Button variant="outline" onClick={() => router.push('/patient-registration')}><UserRound className="w-4 h-4 mr-1" />Patient/Visit</Button>
               <Button variant="outline" onClick={() => router.push('/patient-registration')}><Stethoscope className="w-4 h-4 mr-1" />Consultation</Button>
-              <Button variant="outline" onClick={() => router.push('/billing')}><FlaskConical className="w-4 h-4 mr-1" />Services</Button>
-              <Button variant="outline" onClick={() => router.push('/billing')}><Receipt className="w-4 h-4 mr-1" />Ledger</Button>
-              <Button variant="outline" onClick={() => router.push('/billing')}><IndianRupee className="w-4 h-4 mr-1" />Payment</Button>
-              <Button onClick={() => router.push('/discharge')}><LogOut className="w-4 h-4 mr-1" />Discharge</Button>
+              <Button variant="outline" onClick={() => router.push(selectedRegId ? `/investigations?registrationId=${selectedRegId}` : '/investigations')}><FlaskConical className="w-4 h-4 mr-1" />Services</Button>
+              <Button variant="outline" onClick={() => router.push(selectedRegId ? `/billing?registrationId=${selectedRegId}` : '/billing')}><Receipt className="w-4 h-4 mr-1" />Ledger</Button>
+              <Button variant="outline" onClick={() => router.push(selectedRegId ? `/billing?registrationId=${selectedRegId}` : '/billing')}><IndianRupee className="w-4 h-4 mr-1" />Payment</Button>
+              <Button onClick={() => router.push(selectedRegId ? `/discharge?registrationId=${selectedRegId}` : '/discharge')}><LogOut className="w-4 h-4 mr-1" />Discharge</Button>
             </div>
           </Card>
         </div>
