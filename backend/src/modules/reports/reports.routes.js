@@ -1,10 +1,10 @@
 import { Router } from 'express';
 import { getMISDashboardController } from './reports.controller.js';
-import { authorizeRoles, protect } from '../../middleware/auth.js';
+import { authenticateUser, authorizeRoles } from '../../middleware/auth.js';
 
 const router = Router();
 
-router.use(protect);
-router.get('/mis', authorizeRoles('admin', 'accountant', 'receptionist'), getMISDashboardController);
+router.use(authenticateUser);
+router.get('/mis', authorizeRoles('accountant'), getMISDashboardController);
 
 export default router;

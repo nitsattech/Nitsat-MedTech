@@ -6,15 +6,15 @@ import {
   queueController,
   updateVisitStatusController,
 } from './opd.controller.js';
-import { authorizeRoles, protect } from '../../middleware/auth.js';
+import { authenticateUser, authorizeRoles } from '../../middleware/auth.js';
 
 const router = Router();
 
-router.use(protect);
-router.get('/visits', authorizeRoles('admin', 'receptionist', 'doctor', 'nurse'), listOpdVisitsController);
-router.post('/visits', authorizeRoles('admin', 'receptionist'), createOpdVisitController);
-router.patch('/visits/:id/status', authorizeRoles('admin', 'receptionist', 'doctor'), updateVisitStatusController);
-router.post('/visits/:id/close', authorizeRoles('admin', 'receptionist', 'doctor'), closeOpdVisitController);
-router.get('/queue', authorizeRoles('admin', 'receptionist', 'doctor', 'nurse'), queueController);
+router.use(authenticateUser);
+router.get('/visits', authorizeRoles('receptionist', 'doctor', 'nurse'), listOpdVisitsController);
+router.post('/visits', authorizeRoles('receptionist'), createOpdVisitController);
+router.patch('/visits/:id/status', authorizeRoles('receptionist', 'doctor'), updateVisitStatusController);
+router.post('/visits/:id/close', authorizeRoles('receptionist', 'doctor'), closeOpdVisitController);
+router.get('/queue', authorizeRoles('receptionist', 'doctor', 'nurse'), queueController);
 
 export default router;

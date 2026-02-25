@@ -48,6 +48,22 @@ src/
 
 ## Unified Integration Rules (Implemented)
 
+
+## Authentication & RBAC
+
+- JWT login endpoint: `POST /api/auth/login`
+- Auth middleware: `authenticateUser` (alias: `protect`)
+- Role middleware: `authorizeRoles(...roles)`
+- `admin` has full access across all protected routes.
+
+### Role Access Matrix
+
+- **Receptionist**: patients, OPD, IPD admissions, billing view, payments.
+- **Doctor**: consultation, prescriptions, lab orders, discharge approval.
+- **Lab Technician**: lab/pathology/radiology investigation views and report-status updates.
+- **Pharmacist**: pharmacy orders/dispense and pharmacy-linked billing visibility.
+- **Accountant**: billing write, payments, MIS financial reports.
+
 - OPD module creates and owns `visit_id` (`OPDVisit._id`).
 - IPD module creates and owns `admission_id` (`IPDAdmission._id`).
 - Lab, Pharmacy, OT, Billing and Payments always resolve `referenceType + referenceId` using `validateClinicalReference()` before writing records.
