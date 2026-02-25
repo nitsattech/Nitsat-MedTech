@@ -192,14 +192,14 @@ export default function PatientsPage() {
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => router.push(`/patient-registration?patientId=${patient.id}`)}
+                          onClick={() => router.push(`/patients/${patient.id}/case`)}
                         >
                           View
                         </Button>
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => router.push(`/billing?uhid=${patient.uhid}`)}
+                          onClick={() => router.push(`/patients/${patient.id}/case?tab=billing`)}
                         >
                           Billing
                         </Button>

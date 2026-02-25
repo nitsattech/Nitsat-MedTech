@@ -114,7 +114,7 @@ export default function InvestigationsPage() {
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => router.push('/patient-registration')}
+            onClick={() => router.push('/patients')}
             className="p-0"
           >
             <ArrowLeft className="w-5 h-5" />
@@ -135,7 +135,7 @@ export default function InvestigationsPage() {
             </Alert>
             <div className="flex gap-2">
               <Button variant="outline" onClick={() => router.push('/ipd-workflow')}><Workflow className="w-4 h-4 mr-2" />Open IPD Workflow</Button>
-              <Button onClick={() => router.push('/patient-registration')}>Open Patient Registration</Button>
+              <Button onClick={() => router.push('/patients')}>Open Patient Registration</Button>
             </div>
           </div>
         ) : (
@@ -294,7 +294,7 @@ export default function InvestigationsPage() {
               )}
 
               <div className="mt-6 flex gap-4 justify-end">
-                <Button variant="outline" onClick={() => router.push('/patient-registration')}>
+                <Button variant="outline" onClick={() => router.push('/patients')}>
                   Back
                 </Button>
                 <Button
