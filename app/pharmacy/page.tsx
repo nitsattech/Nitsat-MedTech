@@ -54,19 +54,33 @@ export default function PharmacyPage() {
   });
 
   useEffect(() => {
-    // Demo mode - no need to fetch
+    fetchMedicines();
   }, []);
 
-  const fetchMedicines = (search?: string) => {
-    if (search) {
-      const filtered = demoMedicines.filter(med => 
-        med.name.toLowerCase().includes(search.toLowerCase()) ||
-        med.generic_name?.toLowerCase().includes(search.toLowerCase())
-      );
-      setMedicines(filtered);
+  const fetchMedicines = async (search?: string) => {
+    setLoading(true);
+    try {
+      const query = search ? `?search=${encodeURIComponent(search)}` : '';
+      const response = await fetch(`/api/medicines${query}`);
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch medicines');
       }
+
+      const data: Medicine[] = await response.json();
+      setMedicines(data);
     } catch (err) {
       console.error('Error fetching medicines:', err);
+      // fallback so workflow keeps running even if API is unavailable
+      if (search) {
+        const filtered = demoMedicines.filter(med =>
+          med.name.toLowerCase().includes(search.toLowerCase()) ||
+          med.generic_name?.toLowerCase().includes(search.toLowerCase())
+        );
+        setMedicines(filtered);
+      } else {
+        setMedicines(demoMedicines);
+      }
     } finally {
       setLoading(false);
     }
