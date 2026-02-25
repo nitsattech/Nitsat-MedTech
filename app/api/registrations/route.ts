@@ -5,6 +5,7 @@ export async function GET(request: NextRequest) {
   try {
     await initializeDatabase();
     const sp = request.nextUrl.searchParams;
+    const registrationId = sp.get('registrationId');
     const patientId = sp.get('patientId');
     const status = sp.get('status');
     const type = sp.get('type');
@@ -24,14 +25,22 @@ export async function GET(request: NextRequest) {
   p.city, 
   p.state,
   d.name as dept_name,
-  pr.consultant_name as doctor_name,  -- 🔥 USE SAFE FIELD (NO JOIN DEPENDENCY)
-  NULL as doctor_spec
+  pr.consultant_name as doctor_name,
+  NULL as doctor_spec,
+  b.id as bill_id,
+  b.bill_number,
+  b.total_amount as bill_total_amount,
+  b.deposit_paid as bill_deposit_paid,
+  b.amount_due as bill_amount_due,
+  b.status as bill_status
   FROM patient_registrations pr
   LEFT JOIN patients p ON pr.patient_id = p.id
-  LEFT JOIN departments d ON pr.department_id = d.id`;
+  LEFT JOIN departments d ON pr.department_id = d.id
+  LEFT JOIN billing b ON b.registration_id = pr.id`;
     const params: any[] = [];
     const where: string[] = [];
 
+    if (registrationId) where.push('pr.id = ?'), params.push(registrationId);
     if (patientId) where.push('pr.patient_id = ?'), params.push(patientId);
     if (status) where.push('pr.status = ?'), params.push(status);
     if (type) where.push('pr.registration_type = ?'), params.push(type);
