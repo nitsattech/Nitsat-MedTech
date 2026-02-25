@@ -1,16 +1,13 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-
 import { useRouter, useSearchParams } from 'next/navigation';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-
 import { ArrowLeft, Search, LogOut, ReceiptText, CheckCircle2, ClipboardCheck } from 'lucide-react';
-
 
 
 interface RegistrationRow {
@@ -39,7 +36,6 @@ interface RegistrationRow {
 
 export default function DischargePage() {
   const router = useRouter();
-
   const searchParams = useSearchParams();
   const registrationId = searchParams.get('registrationId');
 
@@ -69,7 +65,6 @@ export default function DischargePage() {
 
   useEffect(() => {
     loadRows();
-
   }, [registrationId]);
 
 

@@ -170,6 +170,33 @@ export async function GET(request: NextRequest) {
     }
 
 
+
+    if (action === 'lab-dashboard') {
+      const visitDate = sp.get('visitDate') || new Date().toISOString().split('T')[0];
+      const status = sp.get('status');
+
+      let query = `SELECT lo.*, pr.token_number, pr.opd_visit_status, pr.admission_date,
+                          p.uhid, p.first_name, p.last_name, p.phone,
+                          d.name as department_name
+                   FROM lab_orders lo
+                   JOIN patient_registrations pr ON pr.id = lo.registration_id
+                   JOIN patients p ON p.id = pr.patient_id
+                   LEFT JOIN departments d ON d.id = pr.department_id
+                   WHERE pr.registration_type = 'OPD' AND pr.admission_date = ?`;
+      const params: any[] = [visitDate];
+
+      if (status) {
+        query += ' AND lo.status = ?';
+        params.push(status);
+      }
+
+      query += ' ORDER BY lo.created_at DESC';
+
+      const orders = await runQuery<any>(query, params);
+      return NextResponse.json(orders);
+    }
+
+
     if (action === 'queue') {
       const visitDate = sp.get('visitDate') || new Date().toISOString().split('T')[0];
       const doctorId = sp.get('doctorId');

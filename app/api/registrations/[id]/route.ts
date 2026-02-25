@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { initializeDatabase, runQuery, runUpdate } from '@/lib/db';
 
-
+main
 async function ensureDischargeWorkflowColumns() {
   const columns = await runQuery<{ name: string }>(`PRAGMA table_info(patient_registrations)`);
   const names = new Set(columns.map((column) => column.name));
