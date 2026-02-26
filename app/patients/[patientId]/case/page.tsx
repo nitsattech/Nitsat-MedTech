@@ -26,7 +26,12 @@ interface Registration {
   bill_amount_due?: number;
   pharmacy_clearance?: number;
   doctor_summary_complete?: number;
+  token_number?: number;
+  ward?: string;
+  bed_number?: string;
+  consultant_name?: string;
 }
+
 
 interface BillItem { id: number; category: string; name: string; quantity: number; amount: number; }
 interface Bill { id: number; total_amount: number; amount_due: number; deposit_paid: number; status: string; }
@@ -157,6 +162,8 @@ export default function PatientCaseDashboardPage() {
 
   const hasActiveVisit = !!selectedRegistration;
 
+  const visitType = selectedRegistration?.registration_type || null;
+
   return (
     <div className="min-h-screen bg-background">
       <header className="sticky top-0 z-40 bg-card border-b border-border">
@@ -170,13 +177,36 @@ export default function PatientCaseDashboardPage() {
           </div>
 
           {selectedRegistration ? (
-            <Card className="mt-4 p-4 grid grid-cols-2 md:grid-cols-6 gap-3 text-sm">
+            <Card className="mt-4 p-4 grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3 text-sm">
               <div><p className="text-muted-foreground">Patient</p><p className="font-semibold">{selectedRegistration.first_name} {selectedRegistration.last_name || ''}</p></div>
               <div><p className="text-muted-foreground">UHID</p><p className="font-mono">{selectedRegistration.uhid}</p></div>
               <div><p className="text-muted-foreground">Age/Gender</p><p>{age} / {selectedRegistration.gender || '-'}</p></div>
-              <div><p className="text-muted-foreground">Active Visit</p><p>{selectedRegistration.registration_type} #{selectedRegistration.id}</p></div>
-              <div><p className="text-muted-foreground">Department</p><p>{selectedRegistration.dept_name || '-'}</p></div>
+              <div>
+                <p className="text-muted-foreground">Active Visit</p>
+                <div className="flex items-center gap-2">
+                  <p>{selectedRegistration.registration_type} #{selectedRegistration.id}</p>
+                  <Badge className={selectedRegistration.registration_type === 'IPD' ? 'bg-red-600 hover:bg-red-600 text-white' : 'bg-blue-600 hover:bg-blue-600 text-white'}>
+                    {selectedRegistration.registration_type}
+                  </Badge>
+                </div>
+              </div>
+              <div><p className="text-muted-foreground">Department</p><p>{selectedRegistration.dept_name || 'General'}</p></div>
               <div><p className="text-muted-foreground">Status</p><Badge variant={selectedRegistration.status === 'Active' ? 'default' : 'secondary'}>{selectedRegistration.status}</Badge></div>
+
+              {visitType === 'OPD' ? (
+                <>
+                  <div><p className="text-muted-foreground">Doctor Name</p><p>{selectedRegistration.doctor_name || selectedRegistration.consultant_name || '-'}</p></div>
+                  <div><p className="text-muted-foreground">Visit Date</p><p>{selectedRegistration.admission_date || '-'}</p></div>
+                  <div><p className="text-muted-foreground">Token Number</p><p>{selectedRegistration.token_number || '-'}</p></div>
+                </>
+              ) : (
+                <>
+                  <div><p className="text-muted-foreground">Ward</p><p>{selectedRegistration.ward || '-'}</p></div>
+                  <div><p className="text-muted-foreground">Bed Number</p><p>{selectedRegistration.bed_number || '-'}</p></div>
+                  <div><p className="text-muted-foreground">Admission Date</p><p>{selectedRegistration.admission_date || '-'}</p></div>
+                  <div><p className="text-muted-foreground">Consultant Doctor</p><p>{selectedRegistration.consultant_name || selectedRegistration.doctor_name || '-'}</p></div>
+                </>
+              )}
             </Card>
           ) : (
             <Card className="mt-4 p-4 text-sm text-muted-foreground">No visit/admission found for this patient yet. Create registration first.</Card>
