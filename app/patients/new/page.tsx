@@ -80,7 +80,7 @@ export default function NewPatientRegistrationPage() {
     return created.id as number;
   };
 
-  const createOpdVisit = async (patientId: number) => {
+  const createOpdVisit = async (patientId: number): Promise<{ id: number }> => {
     const visitDate = new Date().toISOString().slice(0, 10);
     const res = await fetch('/api/opd-workflow', {
       method: 'POST',
@@ -98,7 +98,7 @@ export default function NewPatientRegistrationPage() {
       throw new Error(err.error || 'Failed to create OPD visit');
     }
 
-    return res.json();
+    return (await res.json()) as { id: number };
   };
 
   const onSubmit = async (e: FormEvent) => {
@@ -108,11 +108,20 @@ export default function NewPatientRegistrationPage() {
     setLoading(true);
     try {
       const patientId = await createOrReusePatient();
+      let registrationId: number | null = null;
+
       if (form.auto_create_opd_visit) {
-        await createOpdVisit(patientId);
+        const visit = await createOpdVisit(patientId);
+        registrationId = Number(visit?.id || 0) || null;
       }
 
-      toast.success('Patient registered successfully. OPD visit created.');
+      toast.success(form.auto_create_opd_visit ? 'Patient registered successfully. OPD visit created.' : 'Patient registered successfully.');
+
+      if (registrationId) {
+        router.push(`/opd-flow?registrationId=${registrationId}`);
+        return;
+      }
+
       router.push(`/patients/${patientId}/case`);
     } catch (error: any) {
       toast.error(error.message || 'Registration failed');
@@ -130,7 +139,7 @@ export default function NewPatientRegistrationPage() {
           </Button>
           <div>
             <h1 className="text-2xl font-bold">Register New Patient</h1>
-            <p className="text-xs text-muted-foreground">Fast reception flow with automatic OPD visit creation.</p>
+            <p className="text-xs text-muted-foreground">Fast reception flow with automatic OPD visit creation and direct OPD opening.</p>
           </div>
         </div>
       </header>
