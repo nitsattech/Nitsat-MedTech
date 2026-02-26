@@ -6,11 +6,9 @@ export async function GET(request: NextRequest) {
     await initializeDatabase();
     const sp = request.nextUrl.searchParams;
     const patientId = sp.get('patientId');
+    const visitType = sp.get('visitType');
+    const status = sp.get('status');
     const activeOnly = sp.get('activeOnly') === '1';
-
-    if (!patientId) {
-      return NextResponse.json({ error: 'patientId is required' }, { status: 400 });
-    }
 
     let query = `SELECT pr.*, p.uhid, p.first_name, p.last_name, p.gender, p.date_of_birth,
                         d.name as dept_name,
@@ -22,10 +20,22 @@ export async function GET(request: NextRequest) {
                  LEFT JOIN patients p ON p.id = pr.patient_id
                  LEFT JOIN departments d ON d.id = pr.department_id
                  LEFT JOIN billing b ON b.registration_id = pr.id
-                 WHERE pr.patient_id = ?`;
+                 WHERE 1=1`;
 
-    const params: any[] = [Number(patientId)];
+    const params: any[] = [];
+    if (patientId) {
+      query += ` AND pr.patient_id = ?`;
+      params.push(Number(patientId));
+    }
+    if (visitType) {
+      query += ` AND pr.registration_type = ?`;
+      params.push(visitType);
+    }
     if (activeOnly) query += ` AND pr.status = 'Active'`;
+    if (status) {
+      query += ` AND pr.status = ?`;
+      params.push(status);
+    }
     query += ' ORDER BY pr.created_at DESC';
 
     const rows = await runQuery<any>(query, params);

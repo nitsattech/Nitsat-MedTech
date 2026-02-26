@@ -36,21 +36,21 @@ const departmentIcons: Record<string, React.ReactNode> = {
 };
 
 const moduleRoutes: Record<string, string> = {
-  'OPD': '/patients',
-  'IPD': '/patients',
-  'Medicines': '/patients',
-  'Investigation': '/patients',
+  'OPD': '/opd',
+  'IPD': '/ipd',
+  'Medicines': '/pharmacy',
+  'Investigation': '/investigations',
   'Cardiology': '/patients',
-  'Billing': '/patients',
-  'Pathology': '/patients',
-  'Services': '/patients',
-  'Payment': '/patients',
-  'Discharge': '/patients',
+  'Billing': '/billing',
+  'Pathology': '/investigations',
+  'Services': '/services',
+  'Payment': '/payments',
+  'Discharge': '/discharge',
   'MIS': '/mis',
-  'Sonography': '/patients',
-  'Radiology': '/patients',
+  'Sonography': '/investigations',
+  'Radiology': '/investigations',
   'File': '/patients',
-  'O.T.': '/patients',
+  'O.T.': '/ot',
   'Gastrology': '/patients'
 };
 

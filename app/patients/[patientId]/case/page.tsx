@@ -76,6 +76,7 @@ export default function PatientCaseDashboardPage() {
   const [serviceForm, setServiceForm] = useState({ item_type: 'service', name: '', amount: '0' });
   const [paymentForm, setPaymentForm] = useState({ amount: '0', payment_mode: 'Cash', reference_number: '' });
   const [ipdForm, setIpdForm] = useState({ ward: '', bed_number: '', consultant_name: '', admission_date: new Date().toISOString().slice(0, 10) });
+  const [opdVisitForm, setOpdVisitForm] = useState({ visit_date: new Date().toISOString().slice(0, 10), consultation_fee: '0' });
   const [fileForm, setFileForm] = useState({ fileType: 'other', fileName: '', fileUrl: '' });
 
   const selectedVisit = useMemo(() => visits.find((v) => v.id === selectedVisitId) || visits[0], [visits, selectedVisitId]);
@@ -202,6 +203,24 @@ export default function PatientCaseDashboardPage() {
     await loadVisits();
   };
 
+
+  const createOpdVisit = async () => {
+    const res = await fetch('/api/opd-workflow', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        action: 'create-opd-visit',
+        patient_id: patientId,
+        visit_date: opdVisitForm.visit_date,
+        consultation_fee: Number(opdVisitForm.consultation_fee || 0),
+      }),
+    });
+    if (!res.ok) throw new Error('Failed to create OPD visit');
+    const visit = await res.json();
+    await refresh();
+    setSelectedVisitId(visit.id);
+  };
+
   const admitToIpd = async () => {
     const res = await fetch('/api/visits', {
       method: 'POST',
@@ -318,6 +337,31 @@ export default function PatientCaseDashboardPage() {
             </TabsList>
 
             <TabsContent value="overview">
+              {!selectedVisit && (
+                <Card className="p-4 mb-4 border-amber-300 bg-amber-50">
+                  <p className="font-semibold text-amber-900">Active visit required for clinical actions</p>
+                  <p className="text-sm text-amber-800 mb-3">Create OPD visit or direct IPD admission to enable consultation, lab, billing, pharmacy and services.</p>
+                  <div className="grid md:grid-cols-2 gap-3">
+                    <div className="space-y-2">
+                      <p className="text-sm font-medium">Create OPD Visit</p>
+                      <div className="flex gap-2">
+                        <Input type="date" value={opdVisitForm.visit_date} onChange={(e) => setOpdVisitForm((p) => ({ ...p, visit_date: e.target.value }))} />
+                        <Input type="number" placeholder="Fee" value={opdVisitForm.consultation_fee} onChange={(e) => setOpdVisitForm((p) => ({ ...p, consultation_fee: e.target.value }))} />
+                        <Button onClick={createOpdVisit}>Create OPD</Button>
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <p className="text-sm font-medium">Direct IPD Admission</p>
+                      <div className="flex gap-2">
+                        <Input placeholder="Ward" value={ipdForm.ward} onChange={(e) => setIpdForm((p) => ({ ...p, ward: e.target.value }))} />
+                        <Input placeholder="Bed" value={ipdForm.bed_number} onChange={(e) => setIpdForm((p) => ({ ...p, bed_number: e.target.value }))} />
+                        <Button variant="outline" onClick={admitToIpd}>Admit IPD</Button>
+                      </div>
+                    </div>
+                  </div>
+                </Card>
+              )}
+
               <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
                 <Card className="p-4"><p className="text-xs text-muted-foreground">Latest Diagnosis</p><p className="font-semibold">{flow?.consultation?.diagnosis || '-'}</p></Card>
                 <Card className="p-4"><p className="text-xs text-muted-foreground">Billing</p><p>Total ₹{flow?.bill?.total_amount || 0} / Paid ₹{flow?.bill?.deposit_paid || 0} / Due ₹{flow?.bill?.amount_due || 0}</p></Card>
@@ -340,7 +384,7 @@ export default function PatientCaseDashboardPage() {
                   <Input placeholder="Advice" value={consultationForm.advice} onChange={(e) => setConsultationForm((p) => ({ ...p, advice: e.target.value }))} />
                   <Input type="date" value={consultationForm.follow_up_date} onChange={(e) => setConsultationForm((p) => ({ ...p, follow_up_date: e.target.value }))} />
                 </div>
-                <Button onClick={saveConsultation}>Save Consultation</Button>
+                <Button onClick={saveConsultation} disabled={!selectedVisit}>Save Consultation</Button>
                 <Card className="p-3"><p className="text-xs text-muted-foreground">Current consultation summary</p><p>{flow?.consultation?.diagnosis || 'No consultation saved yet.'}</p></Card>
               </Card>
             </TabsContent>
@@ -365,7 +409,7 @@ export default function PatientCaseDashboardPage() {
                 <div className="flex gap-2">
                   <Input placeholder="Test name" value={labForm.test_name} onChange={(e) => setLabForm((p) => ({ ...p, test_name: e.target.value }))} />
                   <Input type="number" placeholder="Charge" value={labForm.amount} onChange={(e) => setLabForm((p) => ({ ...p, amount: e.target.value }))} />
-                  <Button onClick={addLabOrder}>Create Lab Order</Button>
+                  <Button onClick={addLabOrder} disabled={!selectedVisit}>Create Lab Order</Button>
                 </div>
                 <div className="space-y-2">{(flow?.labOrders || []).map((o) => (
                   <div key={o.id} className="border rounded p-3 flex flex-wrap gap-2 items-center justify-between">
@@ -389,7 +433,7 @@ export default function PatientCaseDashboardPage() {
                   <Input placeholder="Dosage" value={rxForm.dosage} onChange={(e) => setRxForm((p) => ({ ...p, dosage: e.target.value }))} />
                   <Input placeholder="Frequency" value={rxForm.frequency} onChange={(e) => setRxForm((p) => ({ ...p, frequency: e.target.value }))} />
                   <Input placeholder="Duration" value={rxForm.duration} onChange={(e) => setRxForm((p) => ({ ...p, duration: e.target.value }))} />
-                  <Button onClick={addPrescription}>Add Prescription</Button>
+                  <Button onClick={addPrescription} disabled={!selectedVisit}>Add Prescription</Button>
                 </div>
                 <div className="space-y-2">{(flow?.prescriptions || []).map((p: any) => (
                   <div key={p.id} className="border rounded p-2 flex items-center justify-between">
@@ -415,7 +459,7 @@ export default function PatientCaseDashboardPage() {
                   </select>
                   <Input placeholder="Item name" value={serviceForm.name} onChange={(e) => setServiceForm((p) => ({ ...p, name: e.target.value }))} />
                   <Input type="number" placeholder="Amount" value={serviceForm.amount} onChange={(e) => setServiceForm((p) => ({ ...p, amount: e.target.value }))} />
-                  <Button onClick={addService}>Add Charge</Button>
+                  <Button onClick={addService} disabled={!selectedVisit}>Add Charge</Button>
                 </div>
                 <div className="space-y-2">{(flow?.billItems || []).filter((i) => ['other', 'doctor'].includes(i.category)).map((i) => (
                   <div key={i.id} className="border rounded p-2 flex justify-between"><span>{i.name}</span><span>₹{i.amount}</span></div>
@@ -447,7 +491,7 @@ export default function PatientCaseDashboardPage() {
                     <option>Cash</option><option>UPI</option><option>Card</option><option>Online</option>
                   </select>
                   <Input placeholder="Reference" value={paymentForm.reference_number} onChange={(e) => setPaymentForm((p) => ({ ...p, reference_number: e.target.value }))} />
-                  <Button onClick={addPayment}>Record Payment</Button>
+                  <Button onClick={addPayment} disabled={!selectedVisit}>Record Payment</Button>
                 </div>
                 <div className="space-y-2">{(flow?.payments || []).map((p: any) => (
                   <div key={p.id} className="border rounded p-2 flex justify-between"><span>{p.payment_date} · {p.payment_mode}</span><span>₹{p.amount}</span></div>
@@ -480,7 +524,7 @@ export default function PatientCaseDashboardPage() {
                   </select>
                   <Input placeholder="File name" value={fileForm.fileName} onChange={(e) => setFileForm((p) => ({ ...p, fileName: e.target.value }))} />
                   <Input placeholder="File URL (PDF link)" value={fileForm.fileUrl} onChange={(e) => setFileForm((p) => ({ ...p, fileUrl: e.target.value }))} />
-                  <Button onClick={uploadFile}><Upload className="w-4 h-4 mr-1" />Upload</Button>
+                  <Button onClick={uploadFile} disabled={!selectedVisit}><Upload className="w-4 h-4 mr-1" />Upload</Button>
                 </div>
                 <div className="space-y-2">{files.map((f) => (
                   <a key={`${f.id}-${f.file_url}`} href={f.file_url} target="_blank" rel="noreferrer" className="border rounded p-2 flex items-center justify-between hover:bg-muted/30">

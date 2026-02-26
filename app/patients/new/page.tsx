@@ -31,7 +31,6 @@ export default function NewPatientRegistrationPage() {
     date_of_birth: '',
     address: '',
     department_id: '',
-    auto_create_opd_visit: true,
   });
 
   const canSubmit = useMemo(() => form.first_name.trim() && form.phone.trim(), [form.first_name, form.phone]);
@@ -46,7 +45,7 @@ export default function NewPatientRegistrationPage() {
     })();
   }, []);
 
-  const setField = (key: keyof typeof form, value: string | boolean) => {
+  const setField = (key: keyof typeof form, value: string) => {
     setForm((prev) => ({ ...prev, [key]: value }));
   };
 
@@ -80,27 +79,6 @@ export default function NewPatientRegistrationPage() {
     return created.id as number;
   };
 
-  const createOpdVisit = async (patientId: number): Promise<{ id: number }> => {
-    const visitDate = new Date().toISOString().slice(0, 10);
-    const res = await fetch('/api/opd-workflow', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        action: 'create-opd-visit',
-        patient_id: patientId,
-        department_id: form.department_id ? Number(form.department_id) : null,
-        visit_date: visitDate,
-      }),
-    });
-
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      throw new Error(err.error || 'Failed to create OPD visit');
-    }
-
-    return (await res.json()) as { id: number };
-  };
-
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (!canSubmit) return;
@@ -108,20 +86,7 @@ export default function NewPatientRegistrationPage() {
     setLoading(true);
     try {
       const patientId = await createOrReusePatient();
-      let registrationId: number | null = null;
-
-      if (form.auto_create_opd_visit) {
-        const visit = await createOpdVisit(patientId);
-        registrationId = Number(visit?.id || 0) || null;
-      }
-
-      toast.success(form.auto_create_opd_visit ? 'Patient registered successfully. OPD visit created.' : 'Patient registered successfully.');
-
-      if (registrationId) {
-        router.push(`/opd-flow?registrationId=${registrationId}`);
-        return;
-      }
-
+      toast.success('Patient registered successfully. Create visit to start clinical workflow.');
       router.push(`/patients/${patientId}/case`);
     } catch (error: any) {
       toast.error(error.message || 'Registration failed');
@@ -139,7 +104,7 @@ export default function NewPatientRegistrationPage() {
           </Button>
           <div>
             <h1 className="text-2xl font-bold">Register New Patient</h1>
-            <p className="text-xs text-muted-foreground">Fast reception flow with automatic OPD visit creation and direct OPD opening.</p>
+            <p className="text-xs text-muted-foreground">Fast reception flow. Register patient first, then create OPD/IPD visit from case dashboard.</p>
           </div>
         </div>
       </header>
@@ -186,15 +151,7 @@ export default function NewPatientRegistrationPage() {
               <label className="text-sm font-medium">Address</label>
               <Input value={form.address} onChange={(e) => setField('address', e.target.value)} />
             </div>
-
-            <label className="flex items-center gap-2 text-sm">
-              <input
-                type="checkbox"
-                checked={form.auto_create_opd_visit}
-                onChange={(e) => setField('auto_create_opd_visit', e.target.checked)}
-              />
-              Auto-create OPD Visit
-            </label>
+            <Card className="p-3 bg-amber-50 border-amber-200"><p className="text-sm text-amber-800">Active visit required for clinical actions. After saving patient, create OPD/IPD visit inside Patient Case dashboard.</p></Card>
 
             <div className="pt-2">
               <Button type="submit" disabled={!canSubmit || loading} className="bg-primary hover:bg-primary/90">
