@@ -20,7 +20,6 @@ async function ensureOpdSchema() {
   await runUpdate(`CREATE TABLE IF NOT EXISTS consultations (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     registration_id INTEGER NOT NULL,
-    visit_id INTEGER,
     symptoms TEXT,
     diagnosis TEXT,
     prescription_notes TEXT,
@@ -34,7 +33,6 @@ async function ensureOpdSchema() {
   await runUpdate(`CREATE TABLE IF NOT EXISTS prescriptions (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     registration_id INTEGER NOT NULL,
-    visit_id INTEGER,
     medicine_name TEXT NOT NULL,
     dosage TEXT,
     frequency TEXT,
@@ -47,7 +45,6 @@ async function ensureOpdSchema() {
   await runUpdate(`CREATE TABLE IF NOT EXISTS lab_orders (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     registration_id INTEGER NOT NULL,
-    visit_id INTEGER,
     test_name TEXT NOT NULL,
     status TEXT DEFAULT 'Ordered',
     report_url TEXT,
@@ -55,50 +52,6 @@ async function ensureOpdSchema() {
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (registration_id) REFERENCES patient_registrations(id)
-  )`);
-
-  const consultationCols = await runQuery<{ name: string }>('PRAGMA table_info(consultations)');
-  const consultationColNames = new Set(consultationCols.map((column) => column.name));
-  if (!consultationColNames.has('visit_id')) {
-    await runUpdate('ALTER TABLE consultations ADD COLUMN visit_id INTEGER');
-  }
-  await runUpdate('UPDATE consultations SET visit_id = registration_id WHERE visit_id IS NULL');
-
-  const prescriptionCols = await runQuery<{ name: string }>('PRAGMA table_info(prescriptions)');
-  const prescriptionColNames = new Set(prescriptionCols.map((column) => column.name));
-  if (!prescriptionColNames.has('visit_id')) {
-    await runUpdate('ALTER TABLE prescriptions ADD COLUMN visit_id INTEGER');
-  }
-  await runUpdate('UPDATE prescriptions SET visit_id = registration_id WHERE visit_id IS NULL');
-
-  const labCols = await runQuery<{ name: string }>('PRAGMA table_info(lab_orders)');
-  const labColNames = new Set(labCols.map((column) => column.name));
-  if (!labColNames.has('visit_id')) {
-    await runUpdate('ALTER TABLE lab_orders ADD COLUMN visit_id INTEGER');
-  }
-  await runUpdate('UPDATE lab_orders SET visit_id = registration_id WHERE visit_id IS NULL');
-
-  const billItemCols = await runQuery<{ name: string }>('PRAGMA table_info(bill_items)');
-  const billItemColNames = new Set(billItemCols.map((column) => column.name));
-  if (!billItemColNames.has('visit_id')) {
-    await runUpdate('ALTER TABLE bill_items ADD COLUMN visit_id INTEGER');
-  }
-
-  const paymentCols = await runQuery<{ name: string }>('PRAGMA table_info(payments)');
-  const paymentColNames = new Set(paymentCols.map((column) => column.name));
-  if (!paymentColNames.has('visit_id')) {
-    await runUpdate('ALTER TABLE payments ADD COLUMN visit_id INTEGER');
-  }
-
-  await runUpdate(`CREATE TABLE IF NOT EXISTS services (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    visit_id INTEGER NOT NULL,
-    service_name TEXT NOT NULL,
-    service_type TEXT DEFAULT 'service',
-    amount REAL NOT NULL,
-    remarks TEXT,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (visit_id) REFERENCES patient_registrations(id)
   )`);
 }
 
@@ -203,11 +156,11 @@ export async function GET(request: NextRequest) {
       if (!regs.length) return NextResponse.json({ error: 'Visit not found' }, { status: 404 });
 
       const registration = regs[0];
-      const consultationRows = await runQuery<any>('SELECT * FROM consultations WHERE COALESCE(visit_id, registration_id) = ? ORDER BY id DESC LIMIT 1', [registrationId]);
+      const consultationRows = await runQuery<any>('SELECT * FROM consultations WHERE registration_id = ? ORDER BY id DESC LIMIT 1', [registrationId]);
       const consultation = consultationRows[0] || null;
 
-      const prescriptions = await runQuery<any>('SELECT * FROM prescriptions WHERE COALESCE(visit_id, registration_id) = ? ORDER BY id DESC', [registrationId]);
-      const labOrders = await runQuery<any>('SELECT * FROM lab_orders WHERE COALESCE(visit_id, registration_id) = ? ORDER BY id DESC', [registrationId]);
+      const prescriptions = await runQuery<any>('SELECT * FROM prescriptions WHERE registration_id = ? ORDER BY id DESC', [registrationId]);
+      const labOrders = await runQuery<any>('SELECT * FROM lab_orders WHERE registration_id = ? ORDER BY id DESC', [registrationId]);
 
       const bill = await ensureBillForVisit(registrationId);
       const billItems = await runQuery<any>('SELECT * FROM bill_items WHERE bill_id = ? ORDER BY created_at DESC', [bill.id]);
@@ -359,19 +312,19 @@ export async function POST(request: NextRequest) {
       const { registration_id, symptoms, diagnosis, prescription_notes, advice, follow_up_date } = body;
       if (!registration_id) return NextResponse.json({ error: 'registration_id is required' }, { status: 400 });
 
-      const existing = await runQuery<any>('SELECT id FROM consultations WHERE COALESCE(visit_id, registration_id) = ?', [registration_id]);
+      const existing = await runQuery<any>('SELECT id FROM consultations WHERE registration_id = ?', [registration_id]);
       if (existing.length) {
         await runUpdate(
           `UPDATE consultations
-           SET symptoms = ?, diagnosis = ?, prescription_notes = ?, advice = ?, follow_up_date = ?, visit_id = ?, updated_at = CURRENT_TIMESTAMP
-           WHERE COALESCE(visit_id, registration_id) = ?`,
-          [symptoms || null, diagnosis || null, prescription_notes || null, advice || null, follow_up_date || null, registration_id, registration_id]
+           SET symptoms = ?, diagnosis = ?, prescription_notes = ?, advice = ?, follow_up_date = ?, updated_at = CURRENT_TIMESTAMP
+           WHERE registration_id = ?`,
+          [symptoms || null, diagnosis || null, prescription_notes || null, advice || null, follow_up_date || null, registration_id]
         );
       } else {
         await runInsert(
-          `INSERT INTO consultations (registration_id, visit_id, symptoms, diagnosis, prescription_notes, advice, follow_up_date)
-           VALUES (?, ?, ?, ?, ?, ?, ?)`,
-          [registration_id, registration_id, symptoms || null, diagnosis || null, prescription_notes || null, advice || null, follow_up_date || null]
+          `INSERT INTO consultations (registration_id, symptoms, diagnosis, prescription_notes, advice, follow_up_date)
+           VALUES (?, ?, ?, ?, ?, ?)`,
+          [registration_id, symptoms || null, diagnosis || null, prescription_notes || null, advice || null, follow_up_date || null]
         );
       }
 
@@ -394,9 +347,9 @@ export async function POST(request: NextRequest) {
       }
 
       const id = await runInsert(
-        `INSERT INTO prescriptions (registration_id, visit_id, medicine_name, dosage, frequency, duration, instructions)
-         VALUES (?, ?, ?, ?, ?, ?, ?)`,
-        [registration_id, registration_id, medicine_name, dosage || null, frequency || null, duration || null, instructions || null]
+        `INSERT INTO prescriptions (registration_id, medicine_name, dosage, frequency, duration, instructions)
+         VALUES (?, ?, ?, ?, ?, ?)`,
+        [registration_id, medicine_name, dosage || null, frequency || null, duration || null, instructions || null]
       );
 
       const rows = await runQuery<any>('SELECT * FROM prescriptions WHERE id = ?', [id]);
@@ -410,9 +363,9 @@ export async function POST(request: NextRequest) {
       }
 
       const id = await runInsert(
-        `INSERT INTO lab_orders (registration_id, visit_id, test_name, status)
-         VALUES (?, ?, ?, 'Ordered')`,
-        [registration_id, registration_id, test_name]
+        `INSERT INTO lab_orders (registration_id, test_name, status)
+         VALUES (?, ?, 'Ordered')`,
+        [registration_id, test_name]
       );
 
       const rows = await runQuery<any>('SELECT * FROM lab_orders WHERE id = ?', [id]);
@@ -454,9 +407,9 @@ export async function POST(request: NextRequest) {
       const category = categoryMap[item_type] || 'other';
 
       await runInsert(
-        `INSERT INTO bill_items (bill_id, visit_id, category, name, quantity, unit, rate, amount)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-        [bill.id, registration_id, category, name, qty, 'unit', finalRate, finalAmount]
+        `INSERT INTO bill_items (bill_id, category, name, quantity, unit, rate, amount)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        [bill.id, category, name, qty, 'unit', finalRate, finalAmount]
       );
 
       const updatedBill = await recalcBill(bill.id);
@@ -479,9 +432,9 @@ export async function POST(request: NextRequest) {
       const notes = payment_mode && payment_mode !== mappedMode ? `Original mode: ${payment_mode}` : null;
 
       await runInsert(
-        `INSERT INTO payments (bill_id, visit_id, amount, payment_mode, payment_date, reference_number, notes)
-         VALUES (?, ?, ?, ?, ?, ?, ?)`,
-        [bill.id, registration_id, paymentAmount, mappedMode, new Date().toISOString().split('T')[0], reference_number || null, notes]
+        `INSERT INTO payments (bill_id, amount, payment_mode, payment_date, reference_number, notes)
+         VALUES (?, ?, ?, ?, ?, ?)`,
+        [bill.id, paymentAmount, mappedMode, new Date().toISOString().split('T')[0], reference_number || null, notes]
       );
 
       const currentRows = await runQuery<any>('SELECT * FROM billing WHERE id = ?', [bill.id]);
