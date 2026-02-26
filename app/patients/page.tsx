@@ -81,11 +81,11 @@ export default function PatientsPage() {
             <p className="text-xs text-muted-foreground">View and manage all patients</p>
           </div>
           <Button
-            onClick={() => router.push('/patient-registration')}
+            onClick={() => router.push('/patients/new')}
             className="bg-primary hover:bg-primary/90"
           >
             <Plus className="w-4 h-4 mr-2" />
-            New Registration
+            Register New Patient
           </Button>
         </div>
       </header>
@@ -151,10 +151,10 @@ export default function PatientsPage() {
                         {!searchTerm && (
                           <Button
                             size="sm"
-                            onClick={() => router.push('/patient-registration')}
+                            onClick={() => router.push('/patients/new')}
                             className="bg-primary hover:bg-primary/90"
                           >
-                            Register First Patient
+                            Register New Patient
                           </Button>
                         )}
                       </div>
