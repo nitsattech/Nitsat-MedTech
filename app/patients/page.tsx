@@ -81,7 +81,7 @@ export default function PatientsPage() {
             <p className="text-xs text-muted-foreground">View and manage all patients</p>
           </div>
           <Button
-            onClick={() => router.push('/patients/new')}
+            onClick={() => router.push('/opd-flow')}
             className="bg-primary hover:bg-primary/90"
           >
             <Plus className="w-4 h-4 mr-2" />
@@ -151,7 +151,7 @@ export default function PatientsPage() {
                         {!searchTerm && (
                           <Button
                             size="sm"
-                            onClick={() => router.push('/patients/new')}
+                            onClick={() => router.push('/opd-flow')}
                             className="bg-primary hover:bg-primary/90"
                           >
                             Register New Patient
