@@ -1,5 +1,4 @@
--- Create UUID extension
-CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
 
 -- Users table
 CREATE TABLE IF NOT EXISTS users (

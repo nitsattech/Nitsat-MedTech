@@ -1,41 +1,27 @@
-import type { Metadata } from 'next'
-import { Analytics } from '@vercel/analytics/next'
-import './globals.css'
-
-export const metadata: Metadata = {
-  title: 'Nitsat MedTech - Hospital Management System',
-  description: 'Comprehensive Hospital Management System for patient registration, investigations, pharmacy, billing, and OPD management',
-  generator: 'v0.app',
-  icons: {
-    icon: [
-      {
-        url: '/icon-light-32x32.png',
-        media: '(prefers-color-scheme: light)',
-      },
-      {
-        url: '/icon-dark-32x32.png',
-        media: '(prefers-color-scheme: dark)',
-      },
-      {
-        url: '/icon.svg',
-        type: 'image/svg+xml',
-      },
-    ],
-    apple: '/apple-icon.png',
-  },
-}
+import './globals.css';
+import Navbar from '@/components/layout/Navbar';
+export const metadata = {
+  title: "Nitsat MedTech HMS",
+  description: "Hospital Management System",
+};
 
 export default function RootLayout({
   children,
-}: Readonly<{
-  children: React.ReactNode
-}>) {
+}: {
+  children: React.ReactNode;
+}) {
+
   return (
     <html lang="en">
-      <body className="font-sans antialiased">
-        {children}
-        <Analytics />
+      <body className="bg-slate-100">
+
+        <Navbar />
+
+        <main className="p-6">
+          {children}
+        </main>
+
       </body>
     </html>
-  )
+  );
 }

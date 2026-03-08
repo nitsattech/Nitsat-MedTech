@@ -1,313 +1,220 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { ArrowLeft, Plus, Trash2, CheckCircle, Receipt, Workflow } from 'lucide-react';
+  FlaskConical,
+  Search,
+  Plus,
+  Users,
+  FileText,
+  Activity
+} from 'lucide-react';
 
-interface Investigation {
+interface LabOrder {
+  id: number;
+  test_name: string;
+  status: string;
+  patient_name: string;
+  uhid: string;
+  registration_id: number;
+}
+
+interface Test {
   id: number;
   name: string;
   rate: number;
-  unit?: string;
 }
 
-interface InvestigationDetail {
-  id: number;
-  investigation_id: number;
-  quantity: number;
-  rate: number;
-  amount: number;
-  status: string;
-  entry_date: string;
-}
-
-const demoInvestigations: Investigation[] = [
-  { id: 1, name: 'Blood Test - CBC', rate: 200 },
-  { id: 2, name: 'Blood Test - Liver Function', rate: 300 },
-  { id: 3, name: 'Blood Test - Kidney Function', rate: 300 },
-  { id: 4, name: 'X-Ray Chest', rate: 400 },
-  { id: 5, name: 'Ultrasound Abdomen', rate: 500 },
-  { id: 6, name: 'ECG', rate: 250 },
-  { id: 7, name: 'Thyroid Profile', rate: 350 },
-  { id: 8, name: 'Blood Sugar Fasting', rate: 100 }
-];
+const getUserRole = () => {
+  if (typeof document === 'undefined') return null;
+  const cookie = document.cookie
+    .split('; ')
+    .find((row) => row.startsWith('userRole='));
+  return cookie ? cookie.split('=')[1] : null;
+};
 
 export default function InvestigationsPage() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const registrationId = searchParams.get('registrationId');
-  const router = useRouter();
 
-  const [investigations, setInvestigations] = useState<Investigation[]>(demoInvestigations);
-  const [investigationDetails, setInvestigationDetails] = useState<InvestigationDetail[]>([
-    {
-      id: 1,
-      investigation_id: 1,
-      quantity: 1,
-      rate: 200,
-      amount: 200,
-      status: 'Pending',
-      entry_date: new Date().toISOString().split('T')[0]
-    }
-  ]);
-  const [selectedInvestigation, setSelectedInvestigation] = useState('1');
+  const [role, setRole] = useState<string | null>(null);
+  const [labQueue, setLabQueue] = useState<LabOrder[]>([]);
+  const [tests, setTests] = useState<Test[]>([]);
+  const [selectedTest, setSelectedTest] = useState('');
   const [quantity, setQuantity] = useState(1);
+  const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState(false);
 
   useEffect(() => {
-    // Demo mode - data is pre-loaded
+    const r = getUserRole();
+    setRole(r);
+
+    // Role protection (lab + admin only)
+    if (r !== 'lab_technician' && r !== 'admin') {
+      router.push('/dashboard');
+    }
+  }, []);
+
+  // Fetch Lab Dashboard Queue (NO registrationId case)
+  useEffect(() => {
+    if (registrationId) return;
+
+    const fetchQueue = async () => {
+      try {
+        const res = await fetch('/api/investigations'); // lab dashboard API
+        const data = await res.json();
+        setLabQueue(data.queue || []);
+      } catch (err) {
+        console.error('Lab queue error', err);
+      }
+    };
+
+    fetchQueue();
   }, [registrationId]);
 
-  const handleAddInvestigation = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedInvestigation) return;
 
-    setError('');
-    setSuccess(false);
-    setLoading(true);
+  // If NO patient selected → Show Lab Dashboard (Professional)
+  if (!registrationId) {
+    return (
+      <div className="min-h-screen bg-slate-100 p-6 space-y-6">
+        {/* Header */}
+        <Card className="p-6 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <FlaskConical className="w-7 h-7 text-teal-600" />
+            <div>
+              <h1 className="text-2xl font-bold">Pathology / Lab Dashboard</h1>
+              <p className="text-sm text-slate-500">
+                Manage all laboratory investigations & pending orders
+              </p>
 
-    // Simulate API call
-    setTimeout(() => {
-      const inv = investigations.find(i => i.id.toString() === selectedInvestigation);
-      if (inv) {
-        const newDetail: InvestigationDetail = {
-          id: investigationDetails.length + 1,
-          investigation_id: inv.id,
-          quantity: quantity,
-          rate: inv.rate,
-          amount: inv.rate * quantity,
-          status: 'Pending',
-          entry_date: new Date().toISOString().split('T')[0]
-        };
-        setInvestigationDetails([...investigationDetails, newDetail]);
-        setSelectedInvestigation('1');
-        setQuantity(1);
-        setSuccess(true);
-        setTimeout(() => setSuccess(false), 3000);
-      }
-      setLoading(false);
-    }, 500);
-  };
-
-  const totalAmount = investigationDetails.reduce((sum, detail) => sum + detail.amount, 0);
-
-  const selectedInvData = investigations.find(inv => inv.id.toString() === selectedInvestigation);
-  const totalForNew = selectedInvData ? selectedInvData.rate * quantity : 0;
-
-  return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="bg-card border-b border-border sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center gap-4">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => router.push('/patient-registration')}
-            className="p-0"
-          >
-            <ArrowLeft className="w-5 h-5" />
-          </Button>
-          <div>
-            <h1 className="text-2xl font-bold text-foreground">Laboratory Investigations</h1>
-            <p className="text-xs text-muted-foreground">Manage laboratory tests and investigations for a registration</p>
-          </div>
-        </div>
-      </header>
-
-      {/* Main Content */}
-      <main className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {!registrationId ? (
-          <div className="space-y-4">
-            <Alert>
-              <AlertDescription>Please select a patient registration first</AlertDescription>
-            </Alert>
-            <div className="flex gap-2">
-              <Button variant="outline" onClick={() => router.push('/ipd-workflow')}><Workflow className="w-4 h-4 mr-2" />Open IPD Workflow</Button>
-              <Button onClick={() => router.push('/patient-registration')}>Open Patient Registration</Button>
             </div>
           </div>
-        ) : (
-          <div className="space-y-6">
-            {/* Add Investigation Form */}
-            <Card className="p-6">
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-xl font-bold text-foreground">Add Investigation</h2>
-                <div className="flex gap-2">
-                  <Button variant="outline" size="sm" onClick={() => router.push(`/ipd-workflow`)}>
-                    <Workflow className="w-4 h-4 mr-1" />IPD Flow
-                  </Button>
-                  <Button size="sm" onClick={() => router.push(`/billing?registrationId=${registrationId}`)}>
-                    <Receipt className="w-4 h-4 mr-1" />Billing Ledger
-                  </Button>
-                </div>
-              </div>
 
-              <form onSubmit={handleAddInvestigation} className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                  <div className="space-y-2">
-                    <label className="block text-sm font-medium text-foreground">Investigation Test *</label>
-                    <Select value={selectedInvestigation} onValueChange={setSelectedInvestigation}>
-                      <SelectTrigger disabled={loading}>
-                        <SelectValue placeholder="Select test..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {investigations.map(inv => (
-                          <SelectItem key={inv.id} value={inv.id.toString()}>
-                            {inv.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
+          <Button onClick={() => router.push('/dashboard')}>
+            Back to Dashboard
+          </Button>
+        </Card>
 
-                  <div className="space-y-2">
-                    <label className="block text-sm font-medium text-foreground">Quantity</label>
-                    <Input
-                      type="number"
-                      min="1"
-                      value={quantity}
-                      onChange={(e) => setQuantity(parseInt(e.target.value) || 1)}
-                      disabled={loading}
-                    />
-                  </div>
+        {/* Stats */}
+        <div className="grid grid-cols-3 gap-4">
+          <Card className="p-4">
+            <p className="text-sm text-slate-500">Pending Tests</p>
+            <p className="text-2xl font-bold text-yellow-600">
+              {labQueue.filter(q => q.status === 'Pending').length}
+            </p>
+          </Card>
 
-                  <div className="space-y-2">
-                    <label className="block text-sm font-medium text-foreground">Rate</label>
-                    <Input
-                      type="text"
-                      value={selectedInvData ? `₹${selectedInvData.rate}` : '-'}
-                      disabled
-                    />
-                  </div>
+          <Card className="p-4">
+            <p className="text-sm text-slate-500">Completed Tests</p>
+            <p className="text-2xl font-bold text-green-600">
+              {labQueue.filter(q => q.status === 'Completed').length}
+            </p>
+          </Card>
 
-                  <div className="space-y-2">
-                    <label className="block text-sm font-medium text-foreground">Amount</label>
-                    <Input
-                      type="text"
-                      value={`₹${totalForNew.toFixed(2)}`}
-                      disabled
-                    />
-                  </div>
-                </div>
+          <Card className="p-4">
+            <p className="text-sm text-slate-500">Total Orders</p>
+            <p className="text-2xl font-bold text-blue-600">
+              {labQueue.length}
+            </p>
+          </Card>
+        </div>
 
-                {error && (
-                  <Alert className="bg-destructive/10 border-destructive/20">
-                    <AlertDescription className="text-destructive text-sm">{error}</AlertDescription>
-                  </Alert>
-                )}
+        {/* Lab Orders Table */}
+        <Card className="p-6">
+          <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
+            <Users className="w-5 h-5" />
+            Today’s Lab Orders
+          </h2>
 
-                {success && (
-                  <Alert className="bg-green-500/10 border-green-500/20">
-                    <AlertDescription className="text-green-600 text-sm flex items-center gap-2">
-                      <CheckCircle className="w-4 h-4" />
-                      Investigation added successfully
-                    </AlertDescription>
-                  </Alert>
-                )}
+          {labQueue.length === 0 ? (
+            <p className="text-slate-400 text-center py-10">
+              No lab orders yet. Orders will appear here when doctor sends tests.
+            </p>
+          ) : (
+            <table className="w-full border rounded-lg">
+              <thead className="bg-slate-200">
+                <tr>
+                  <th className="p-3 text-left">UHID</th>
+                  <th className="p-3 text-left">Patient</th>
+                  <th className="p-3 text-left">Test</th>
+                  <th className="p-3 text-center">Status</th>
+                  <th className="p-3 text-center">Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {labQueue.map((order) => (
+                  <tr key={order.id} className="border-t">
+                    <td className="p-3">{order.uhid}</td>
+                    <td className="p-3">{order.patient_name}</td>
+                    <td className="p-3 font-medium">{order.test_name}</td>
+                    <td className="p-3 text-center">
+                      <span className={`px-2 py-1 rounded text-xs ${
+                        order.status === 'Pending'
+                          ? 'bg-yellow-100 text-yellow-700'
+                          : 'bg-green-100 text-green-700'
+                      }`}>
+                        {order.status}
+                      </span>
+                    </td>
+                    <td className="p-3 text-center">
+                      <Button
+                        size="sm"
+                        onClick={() =>
+                          router.push(
+                            `/investigations?registrationId=${order.registration_id}`
+                          )
+                        }
+                      >
+                        Open
+                      </Button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </Card>
+      </div>
+    );
+  }
 
-                <Button
-                  type="submit"
-                  disabled={loading || !selectedInvestigation}
-                  className="w-full bg-primary hover:bg-primary/90"
-                >
-                  <Plus className="w-4 h-4 mr-2" />
-                  {loading ? 'Adding...' : 'Add Investigation'}
-                </Button>
-              </form>
-            </Card>
+  // Patient Specific Investigation Page (Doctor/Lab)
+  return (
+    <div className="min-h-screen bg-slate-100 p-6">
+      <Card className="p-6">
+        <h1 className="text-2xl font-bold flex items-center gap-2">
+          <Activity className="w-6 h-6 text-teal-600" />
+          Patient Laboratory Investigations
+        </h1>
+        <p className="text-slate-500 mt-1">
+          Registration ID: {registrationId}
+        </p>
+      </Card>
 
-            {/* Investigation Details */}
-            <Card className="p-6">
-              <h2 className="text-xl font-bold text-foreground mb-6">
-                Selected Investigations ({investigationDetails.length})
-              </h2>
+      <Card className="p-6 mt-4">
+        <h2 className="font-semibold mb-4">Order New Lab Test</h2>
 
-              {investigationDetails.length === 0 ? (
-                <p className="text-center text-muted-foreground py-8">
-                  No investigations added yet. Add investigations using the form above.
-                </p>
-              ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead>
-                      <tr className="border-b border-border bg-muted/50">
-                        <th className="px-4 py-3 text-left text-sm font-semibold text-foreground">Test Name</th>
-                        <th className="px-4 py-3 text-left text-sm font-semibold text-foreground">Quantity</th>
-                        <th className="px-4 py-3 text-left text-sm font-semibold text-foreground">Rate</th>
-                        <th className="px-4 py-3 text-right text-sm font-semibold text-foreground">Amount</th>
-                        <th className="px-4 py-3 text-center text-sm font-semibold text-foreground">Status</th>
-                        <th className="px-4 py-3 text-center text-sm font-semibold text-foreground">Action</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {investigationDetails.map((detail) => {
-                        const investigation = investigations.find(inv => inv.id === detail.investigation_id);
-                        return (
-                          <tr key={detail.id} className="border-b border-border hover:bg-muted/30">
-                            <td className="px-4 py-3 text-sm text-foreground">{investigation?.name}</td>
-                            <td className="px-4 py-3 text-sm text-foreground">{detail.quantity}</td>
-                            <td className="px-4 py-3 text-sm text-foreground">₹{detail.rate.toFixed(2)}</td>
-                            <td className="px-4 py-3 text-sm text-foreground text-right font-semibold">₹{detail.amount.toFixed(2)}</td>
-                            <td className="px-4 py-3 text-sm text-center">
-                              <span className={`px-2 py-1 rounded text-xs font-medium ${
-                                detail.status === 'Pending' ? 'bg-yellow-100 text-yellow-800' :
-                                detail.status === 'Completed' ? 'bg-green-100 text-green-800' :
-                                'bg-gray-100 text-gray-800'
-                              }`}>
-                                {detail.status}
-                              </span>
-                            </td>
-                            <td className="px-4 py-3 text-center">
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="text-destructive hover:text-destructive/80"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </Button>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                    <tfoot>
-                      <tr className="border-t-2 border-border bg-muted/50">
-                        <td colSpan={3} className="px-4 py-4 text-right font-bold text-foreground">Total Amount:</td>
-                        <td className="px-4 py-4 text-right font-bold text-lg text-primary">₹{totalAmount.toFixed(2)}</td>
-                        <td colSpan={2}></td>
-                      </tr>
-                    </tfoot>
-                  </table>
-                </div>
-              )}
+        <p className="text-slate-400 py-6">
+          Investigation ordering UI is under construction. You can navigate back to dashboard or proceed to billing.
+        </p>
 
-              <div className="mt-6 flex gap-4 justify-end">
-                <Button variant="outline" onClick={() => router.push('/patient-registration')}>
-                  Back
-                </Button>
-                <Button
-                  className="bg-primary hover:bg-primary/90"
-                  onClick={() => router.push(`/billing?registrationId=${registrationId}`)}
-                >
-                  Proceed to Billing
-                </Button>
-              </div>
-            </Card>
-          </div>
-        )}
-      </main>
+        <div className="mt-6 flex gap-4 justify-end">
+          <Button variant="outline" onClick={() => router.push('/dashboard')}>
+            Back
+          </Button>
+          <Button
+            className="bg-primary hover:bg-primary/90"
+            onClick={() => router.push(`/billing?registrationId=${registrationId}`)}
+          >
+            Proceed to Billing
+          </Button>
+        </div>
+      </Card>
     </div>
   );
 }

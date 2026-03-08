@@ -221,7 +221,7 @@ db.exec(schema, async (err) => {
     const adminPassword = await bcrypt.hash('admin123', 10);
     
     const insertData = () => {
-      return new Promise((resolve, reject) => {
+      return new Promise(async (resolve, reject) => {
         let completed = 0;
         let total = 3; // departments, admin, medicines, investigations
 
@@ -231,7 +231,23 @@ db.exec(schema, async (err) => {
             resolve();
           }
         };
+     const labPassword = await bcrypt.hash('lab123', 10);
 
+db.run(
+  `INSERT OR IGNORE INTO users 
+  (email, password_hash, full_name, role, is_active)
+  VALUES (?, ?, ?, ?, ?)`,
+  ['lab@nitsat.com', labPassword, 'Lab Technician', 'lab_technician', 1]
+);
+
+const doctorPassword = await bcrypt.hash('doctor123', 10);
+
+db.run(
+  `INSERT OR IGNORE INTO users 
+  (email, password_hash, full_name, role, is_active)
+  VALUES (?, ?, ?, ?, ?)`,
+  ['doctor@nitsat.com', doctorPassword, 'Doctor User', 'doctor', 1]
+);
         // Insert admin user first
         db.run(
           `INSERT OR IGNORE INTO users (email, password_hash, full_name, role, is_active)
@@ -246,7 +262,47 @@ db.exec(schema, async (err) => {
             checkComplete();
           }
         );
+       // 🔥 HMS Role Based Demo Users
+const roleUsers = [
+  {
+    email: 'admin@nitsat.com',
+    password: 'admin123',
+    name: 'Administrator',
+    role: 'admin',
+    department: 'Administration'
+  },
+  {
+    email: 'lab@nitsat.com',
+    password: 'lab123',
+    name: 'Lab Technician',
+    role: 'lab_technician',
+    department: 'Pathology'
+  },
+  {
+    email: 'doctor@nitsat.com',
+    password: 'doctor123',
+    name: 'Dr Sharma',
+    role: 'doctor',
+    department: 'OPD'
+  },
+  {
+    email: 'reception@nitsat.com',
+    password: 'reception123',
+    name: 'Reception Staff',
+    role: 'receptionist',
+    department: 'OPD'
+  }
+];
 
+for (const u of roleUsers) {
+  const hash = await bcrypt.hash(u.password, 10);
+  db.run(
+    `INSERT OR IGNORE INTO users 
+    (email, password_hash, full_name, role, department, is_active)
+    VALUES (?, ?, ?, ?, ?, 1)`,
+    [u.email, hash, u.name, u.role, u.department]
+  );
+}
         // Insert departments
         const departments = [
           ['OPD', 'Out Patient Department', 'user'],

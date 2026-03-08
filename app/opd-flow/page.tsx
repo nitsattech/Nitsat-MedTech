@@ -441,6 +441,11 @@ export default function OPDFlowPage() {
 
 
               <Button type="submit" className="col-span-2" disabled={loading}><UserPlus className="w-4 h-4 mr-1" />Create Patient</Button>
+              <Button
+ onClick={() => router.push(`/investigations?registrationId=${registration?.id}`)}
+>
+ Open Lab / Investigation
+</Button>
             </form>
           </Card>
 

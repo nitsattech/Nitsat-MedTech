@@ -42,11 +42,48 @@ export default function LoginPage() {
     }
   };
 
-  const handleDemoLogin = async () => {
-    setEmail('admin@nitsat.com');
-    setPassword('admin123');
-    // Will use these credentials on form submit
-  };
+  const handleLogin = async (e: React.FormEvent) => {
+  e.preventDefault();
+  setLoading(true);
+  setError('');
+
+  try {
+    const res = await fetch('/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password }),
+    });
+
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error);
+
+    // Save role in localStorage
+    localStorage.setItem('user', JSON.stringify(data.user));
+
+    // 🔥 ROLE BASED REDIRECT
+    const role = data.user.role;
+
+if (role === 'admin') {
+  router.push('/dashboard');
+} else if (role === 'doctor') {
+  router.push('/opd-flow');
+} else if (role === 'receptionist') {
+  router.push('/opd-flow');
+} else if (role === 'lab_technician') {
+  router.push('/investigations');
+} else if (role === 'pharmacist') {
+  router.push('/pharmacy');
+} else if (role === 'accountant') {
+  router.push('/billing');
+} else {
+  router.push('/dashboard');
+}
+  } catch (err: any) {
+    setError(err.message);
+  } finally {
+    setLoading(false);
+  }
+};
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-secondary/5 to-background flex items-center justify-center p-4">

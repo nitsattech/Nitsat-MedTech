@@ -1,11 +1,28 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { authenticate } from '@/lib/auth';
-import { initializeDatabase } from '@/lib/db';
+import sqlite3 from 'sqlite3';
+import bcrypt from 'bcryptjs';
+import path from 'path';
+
+const dbPath = path.join(process.cwd(), 'data', 'hospital.db');
+
+function getUserByEmail(email: string): Promise<any> {
+  return new Promise((resolve, reject) => {
+    const db = new sqlite3.Database(dbPath);
+    db.get(
+      'SELECT * FROM users WHERE email = ? AND is_active = 1',
+      [email],
+      (err, row) => {
+        db.close();
+        if (err) reject(err);
+        else resolve(row);
+      }
+    );
+  });
+}
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
-    const { email, password } = body;
+    const { email, password } = await request.json();
 
     if (!email || !password) {
       return NextResponse.json(
@@ -14,46 +31,58 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Demo mode - accept any credentials for UI exploration
-    const demoUser = {
-      id: '1',
-      email: email,
-      full_name: email.split('@')[0].charAt(0).toUpperCase() + email.split('@')[0].slice(1),
-      role: 'admin',
-      is_active: 1
-    };
+    const user = await getUserByEmail(email);
+
+    if (!user) {
+      return NextResponse.json(
+        { error: 'Invalid email or password' },
+        { status: 401 }
+      );
+    }
+
+    const isMatch = await bcrypt.compare(password, user.password_hash);
+
+    if (!isMatch) {
+      return NextResponse.json(
+        { error: 'Invalid email or password' },
+        { status: 401 }
+      );
+    }
 
     const response = NextResponse.json({
       success: true,
-      user: demoUser
+      user: {
+        id: user.id,
+        email: user.email,
+        full_name: user.full_name,
+        role: user.role,
+      },
     });
 
-    response.cookies.set('userId', demoUser.id.toString(), {
+    // 🔥 CRITICAL: Global cookies for HMS auth
+    response.cookies.set('userId', String(user.id), {
+      path: '/',
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
-      maxAge: 7 * 24 * 60 * 60
     });
 
-    response.cookies.set('userRole', demoUser.role, {
+    response.cookies.set('userRole', user.role, {
+      path: '/', // VERY IMPORTANT (fixes investigation login issue)
       httpOnly: false,
-      secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
-      maxAge: 7 * 24 * 60 * 60
     });
 
-    response.cookies.set('userEmail', demoUser.email, {
+    response.cookies.set('userEmail', user.email, {
+      path: '/',
       httpOnly: false,
-      secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
-      maxAge: 7 * 24 * 60 * 60
     });
 
     return response;
   } catch (error) {
-    console.error('[v0] Login error:', error);
+    console.error('Login error:', error);
     return NextResponse.json(
-      { error: 'Login failed. Please try again.' },
+      { error: 'Login failed' },
       { status: 500 }
     );
   }
