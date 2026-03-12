@@ -11,7 +11,7 @@ import {
   ChevronRight, X, IndianRupee, Stethoscope
 } from 'lucide-react';
 
-interface Patient { id: number; uhid: string; first_name: string; last_name?: string; gender?: string; date_of_birth?: string; phone?: string; email?: string; address?: string; city?: string; state?: string; pin_code?: string; blood_group?: string; created_at: string; }
+interface Patient { id: number; uhid: string; first_name: string; last_name?: string; gender?: string; date_of_birth?: string; phone?: string; email?: string; address?: string; city?: string; state?: string; pin_code?: string; blood_group?: string; abha_number?: string; abha_address?: string; abha_linked?: number; created_at: string; }
 interface Registration {
   procedure_treatment: string; id: number; registration_type: string; admission_date: string; admission_time?: string; discharge_date?: string; status: string; provisional_diagnosis?: string; department_id?: number; doctor_id?: number; doctor_name?: string; room_type?: string; bed_number?: string; guardian_name?: string; guardian_relation?: string; guardian_phone?: string; insurance_company?: string; insurance_number?: string; rate_list?: string; consultant_name?: string; referred_by?: string; additional_consultant?: string; nationality?: string; religion?: string; occupation?: string; marital_status?: string; id_document_type?: string; id_document_number?: string; tpa_name?: string; category?: string; dept_name?: string; created_at: string;
 }
@@ -282,7 +282,7 @@ export default function PatientRegistrationPage() {
   const [copied, setCopied] = useState(false);
   const [step, setStep] = useState<'select' | 'form' | 'done'>('select');
   const [pastRegs, setPastRegs] = useState<Registration[]>([]);
-  const [newForm, setNewForm] = useState({ first_name: '', last_name: '', date_of_birth: '', gender: '', phone: '', email: '', address: '', city: '', state: '', pin_code: '', blood_group: '' });
+  const [newForm, setNewForm] = useState({ first_name: '', last_name: '', date_of_birth: '', gender: '', phone: '', email: '', address: '', city: '', state: '', pin_code: '', blood_group: '', abha_number: '', abha_address: '' });
   const [regForm, setRegForm] = useState({
     registration_type: 'OPD', department_id: '', doctor_id: '', additional_consultant: '', referred_by: '',
     admission_date: new Date().toISOString().split('T')[0], admission_time: new Date().toTimeString().slice(0, 5),
@@ -323,9 +323,16 @@ export default function PatientRegistrationPage() {
 
   const createPatient = async () => {
     if (!newForm.first_name) { setError('First name required'); return; }
+    if (newForm.phone && !/^\d{10}$/.test(newForm.phone)) { setError('Phone must be exactly 10 digits'); return; }
+    if (newForm.gender && !['Male', 'Female', 'Other'].includes(newForm.gender)) { setError('Gender must be Male, Female, or Other'); return; }
     setLoading(true); setError('');
     try {
-      const r = await fetch('/api/patients', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(newForm) });
+      const payload = {
+        ...newForm,
+        date_of_birth: newForm.date_of_birth ? new Date(newForm.date_of_birth).toISOString().split('T')[0] : null,
+        abha_linked: Boolean(newForm.abha_number || newForm.abha_address),
+      };
+      const r = await fetch('/api/patients', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
       const d = await r.json(); if (!r.ok) { setError(d.error || 'Failed'); return; }
       setPatient(d); setStep('form');
     } catch { setError('Error'); } finally { setLoading(false); }
@@ -506,6 +513,26 @@ export default function PatientRegistrationPage() {
                   <div><label className={lc}>State</label><input className={ic} value={newForm.state} onChange={e => setNewForm(f => ({ ...f, state: e.target.value }))} placeholder="UP" /></div>
                   <div><label className={lc}>Pin Code</label><input className={ic} value={newForm.pin_code} onChange={e => setNewForm(f => ({ ...f, pin_code: e.target.value }))} placeholder="208001" /></div>
                 </div>
+
+                <div className="mt-5 rounded-xl border border-blue-100 bg-blue-50/60 p-4 space-y-3">
+                  <h3 className="font-bold text-blue-900">ABHA Integration</h3>
+                  <p className="text-xs text-blue-700">Create ABHA or link existing ABHA for ABDM sandbox-ready registration.</p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div>
+                      <label className={lc}>ABHA Number (optional)</label>
+                      <input className={ic} value={newForm.abha_number} onChange={e => setNewForm(f => ({ ...f, abha_number: e.target.value }))} placeholder="14-digit ABHA Number" />
+                    </div>
+                    <div>
+                      <label className={lc}>ABHA Address (optional)</label>
+                      <input className={ic} value={newForm.abha_address} onChange={e => setNewForm(f => ({ ...f, abha_address: e.target.value }))} placeholder="name@abdm" />
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <Button type="button" variant="outline" size="sm">Create ABHA</Button>
+                    <Button type="button" variant="outline" size="sm">Link Existing ABHA</Button>
+                  </div>
+                </div>
+
                 {error && <p className="text-red-500 text-sm mt-3">{error}</p>}
                 <Button onClick={createPatient} disabled={loading} className="mt-4 bg-blue-700 hover:bg-blue-800 text-white">{loading ? 'Creating...' : 'Create Patient & Continue →'}</Button>
               </Card>
@@ -535,6 +562,7 @@ export default function PatientRegistrationPage() {
                       </span>
                       {patient.gender && <span className="text-xs bg-white border text-slate-600 px-2 py-0.5 rounded">{patient.gender}</span>}
                       {patient.blood_group && <span className="text-xs font-bold text-red-700 bg-red-100 border border-red-200 px-2 py-0.5 rounded">{patient.blood_group}</span>}
+                      {(patient.abha_linked || patient.abha_number) && <span className="text-xs font-semibold text-emerald-700 bg-emerald-100 border border-emerald-200 px-2 py-0.5 rounded">Linked ABHA ID: {patient.abha_number || patient.abha_address || 'Available'}</span>}
                     </div>
                     <div className="flex flex-wrap gap-3 mt-1.5 text-xs text-slate-500">
                       {patient.phone && <span className="flex items-center gap-1"><Phone className="w-3 h-3" />{patient.phone}</span>}

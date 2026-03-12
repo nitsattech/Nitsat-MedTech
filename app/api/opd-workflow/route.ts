@@ -17,6 +17,22 @@ async function ensureOpdSchema() {
     await runUpdate('ALTER TABLE patient_registrations ADD COLUMN consultation_fee REAL DEFAULT 0');
   }
 
+
+  const patientColumns = await runQuery<{ name: string }>('PRAGMA table_info(patients)');
+  const patientNames = new Set(patientColumns.map((column) => column.name));
+
+  if (!patientNames.has('abha_number')) {
+    await runUpdate('ALTER TABLE patients ADD COLUMN abha_number TEXT');
+  }
+
+  if (!patientNames.has('abha_address')) {
+    await runUpdate('ALTER TABLE patients ADD COLUMN abha_address TEXT');
+  }
+
+  if (!patientNames.has('abha_linked')) {
+    await runUpdate('ALTER TABLE patients ADD COLUMN abha_linked INTEGER DEFAULT 0');
+  }
+
   await runUpdate(`CREATE TABLE IF NOT EXISTS consultations (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     registration_id INTEGER NOT NULL,
@@ -145,7 +161,7 @@ export async function GET(request: NextRequest) {
       if (!registrationId) return NextResponse.json({ error: 'registrationId required' }, { status: 400 });
 
       const regs = await runQuery<any>(
-        `SELECT pr.*, p.uhid, p.first_name, p.last_name, p.phone, d.name as department_name
+        `SELECT pr.*, p.uhid, p.first_name, p.last_name, p.phone, p.abha_number, p.abha_linked, d.name as department_name
          FROM patient_registrations pr
          LEFT JOIN patients p ON p.id = pr.patient_id
          LEFT JOIN departments d ON d.id = pr.department_id
@@ -244,16 +260,18 @@ export async function POST(request: NextRequest) {
 
 
     if (action === 'create-patient') {
-      const { first_name, last_name, phone, gender } = body;
+      const { first_name, last_name, phone, gender, abha_number, abha_address } = body;
       if (!first_name || !phone) return NextResponse.json({ error: 'first_name and phone are required' }, { status: 400 });
+      if (!/^\d{10}$/.test(String(phone))) return NextResponse.json({ error: 'phone must be 10 digits' }, { status: 400 });
+      if (gender && !['Male', 'Female', 'Other'].includes(gender)) return NextResponse.json({ error: 'invalid gender' }, { status: 400 });
 
       const countRows = await runQuery<any>('SELECT COUNT(*) as c FROM patients');
       const uhid = `UHID${String(Number(countRows[0]?.c || 0) + 1).padStart(6, '0')}`;
 
       const patientId = await runInsert(
-        `INSERT INTO patients (uhid, first_name, last_name, phone, gender)
-         VALUES (?, ?, ?, ?, ?)`,
-        [uhid, first_name, last_name || null, phone, gender || null]
+        `INSERT INTO patients (uhid, first_name, last_name, phone, gender, abha_number, abha_address, abha_linked)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        [uhid, first_name, last_name || null, phone, gender || null, abha_number || null, abha_address || null, abha_number ? 1 : 0]
       );
 
       const rows = await runQuery<any>('SELECT * FROM patients WHERE id = ?', [patientId]);

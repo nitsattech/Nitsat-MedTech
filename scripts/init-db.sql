@@ -39,6 +39,9 @@ CREATE TABLE IF NOT EXISTS patients (
   country VARCHAR(100) DEFAULT 'India',
   pin_code VARCHAR(10),
   blood_group VARCHAR(5),
+  abha_number TEXT,
+  abha_address TEXT,
+  abha_linked BOOLEAN DEFAULT false,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );

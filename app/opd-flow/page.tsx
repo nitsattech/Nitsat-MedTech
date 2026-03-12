@@ -22,7 +22,7 @@ import { Input } from '@/components/ui/input';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
-interface Patient { id: number; uhid: string; first_name: string; last_name?: string; phone?: string; }
+interface Patient { id: number; uhid: string; first_name: string; last_name?: string; phone?: string; abha_number?: string; abha_address?: string; abha_linked?: number; }
 interface Registration { id: number; token_number?: number; opd_visit_status?: string; status: string; admission_date: string; }
 interface Consultation { symptoms?: string; diagnosis?: string; prescription_notes?: string; advice?: string; follow_up_date?: string; }
 interface LabOrder { id: number; test_name: string; status: string; registration_id: number; uhid?: string; first_name?: string; last_name?: string; token_number?: number; }
@@ -57,7 +57,7 @@ export default function OPDFlowPage() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
-  const [newPatient, setNewPatient] = useState({ first_name: '', last_name: '', phone: '', gender: 'Male' });
+  const [newPatient, setNewPatient] = useState({ first_name: '', last_name: '', phone: '', gender: 'Male', abha_number: '', abha_address: '' });
   const [autoVisitOnCreate, setAutoVisitOnCreate] = useState(true);
 
   const [visitForm, setVisitForm] = useState({ doctor_id: '', department_id: '', visit_date: new Date().toISOString().slice(0, 10), consultation_fee: '300' });
@@ -159,6 +159,14 @@ export default function OPDFlowPage() {
 
   const handleCreatePatient = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!/^\d{10}$/.test(newPatient.phone)) {
+      setError('Phone number must be 10 digits.');
+      return;
+    }
+    if (!['Male', 'Female', 'Other'].includes(newPatient.gender)) {
+      setError('Gender must be Male, Female, or Other.');
+      return;
+    }
     setLoading(true);
     setError('');
 
@@ -385,7 +393,7 @@ export default function OPDFlowPage() {
           <Card className="p-4 space-y-3 lg:col-span-2">
             <div className="flex items-center justify-between">
               <h2 className="font-semibold text-lg">Patient Search / Create</h2>
-              {selectedPatient && <p className="text-xs text-blue-700 font-semibold">Selected: {selectedPatient.first_name} ({selectedPatient.uhid})</p>}
+              {selectedPatient && <p className="text-xs text-blue-700 font-semibold">Selected: {selectedPatient.first_name} ({selectedPatient.uhid}) {selectedPatient.abha_number ? `• Linked ABHA ID: ${selectedPatient.abha_number}` : ''}</p>}
             </div>
 
             <form onSubmit={handleSearchPatient} className="flex gap-2">
@@ -397,7 +405,7 @@ export default function OPDFlowPage() {
 
                 <button key={p.id} onClick={() => setSelectedPatient(p)} className={`w-full text-left p-2 rounded border ${selectedPatient?.id === p.id ? 'border-blue-500 bg-blue-50' : 'border-slate-200'}`}>
                   <p className="font-semibold text-sm">{p.first_name} {p.last_name || ''}</p>
-                  <p className="text-xs text-slate-500">{p.uhid} • {p.phone || '-'}</p>
+                  <p className="text-xs text-slate-500">{p.uhid} • {p.phone || '-'} {p.abha_number ? `• ABHA: ${p.abha_number}` : ''}</p>
                 </button>
               ))}
             </div>
@@ -413,6 +421,17 @@ export default function OPDFlowPage() {
                   <SelectItem value="Other">Other</SelectItem>
                 </SelectContent>
               </Select>
+              <Input value={newPatient.abha_number} onChange={(e) => setNewPatient((v) => ({ ...v, abha_number: e.target.value }))} placeholder="ABHA Number (optional)" />
+              <Input value={newPatient.abha_address} onChange={(e) => setNewPatient((v) => ({ ...v, abha_address: e.target.value }))} placeholder="ABHA Address (optional)" />
+
+              <div className="col-span-2 flex gap-2">
+                {selectedPatient && !selectedPatient.abha_linked && !selectedPatient.abha_number && (
+                  <Button type="button" variant="outline" size="sm">Create ABHA</Button>
+                )}
+                {selectedPatient?.abha_number && (
+                  <p className="text-xs text-emerald-700 font-semibold">Linked ABHA ID: {selectedPatient.abha_number}</p>
+                )}
+              </div>
 
               <div className="col-span-2 mt-1 p-3 rounded border bg-slate-50">
                 <label className="flex items-center gap-2 text-sm font-medium text-slate-700 mb-2">

@@ -102,6 +102,9 @@ export interface Patient {
   gender?: string;
   phone?: string;
   email?: string;
+  abha_number?: string;
+  abha_address?: string;
+  abha_linked?: number;
   address?: string;
   city?: string;
   state?: string;
