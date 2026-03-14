@@ -8,20 +8,54 @@ let isInitialized = false;
 
 export function initializeDatabase() {
   return new Promise<void>((resolve, reject) => {
+
     if (isInitialized && db) {
       resolve();
       return;
     }
 
     db = new sqlite3.Database(DB_PATH, (err) => {
+
       if (err) {
-        reject(err);
-      } else {
-        isInitialized = true;
-        resolve();
+        reject(err)
+        return
       }
-    });
-  });
+
+      console.log("✅ Database connected")
+
+      db.exec(`
+
+      CREATE TABLE IF NOT EXISTS hospitals (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL
+      );
+
+      CREATE TABLE IF NOT EXISTS users (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        email TEXT UNIQUE,
+        full_name TEXT,
+        role TEXT,
+        hospital_id INTEGER,
+        password_hash TEXT
+      );
+
+      `, (err) => {
+
+        if (err) {
+          reject(err)
+          return
+        }
+
+        console.log("✅ Tables created")
+
+        isInitialized = true
+        resolve()
+
+      })
+
+    })
+
+  })
 }
 
 export function getDatabase() {

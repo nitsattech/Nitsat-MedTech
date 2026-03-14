@@ -21,16 +21,16 @@ body:JSON.stringify({email,password})
 
 const data = await res.json()
 
-if(data.user){
+if(!res.ok){
+alert(data.error || "Login failed")
+return
+}
 
 localStorage.setItem("user",JSON.stringify(data.user))
 localStorage.setItem("hospital",JSON.stringify(data.hospital))
+document.cookie = `userRole=${data.user.role}; path=/`
 
 router.push("/dashboard")
-
-}else{
-alert(data.error)
-}
 
 }
 
