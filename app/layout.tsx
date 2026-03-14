@@ -1,27 +1,28 @@
-import './globals.css';
-import Navbar from '@/components/layout/Navbar';
-export const metadata = {
-  title: "Nitsat MedTech HMS",
-  description: "Hospital Management System",
-};
+'use client'
+
+import './globals.css'
+import { usePathname } from 'next/navigation'
+import Navbar from '@/components/HMSNavbar'
 
 export default function RootLayout({
   children,
 }: {
-  children: React.ReactNode;
+  children: React.ReactNode
 }) {
+
+  const pathname = usePathname()
+
+  const hideNavbar = pathname === "/login"
 
   return (
     <html lang="en">
-      <body className="bg-slate-100">
+      <body>
 
-        <Navbar />
+        {!hideNavbar && <Navbar />}
 
-        <main className="p-6">
-          {children}
-        </main>
+        {children}
 
       </body>
     </html>
-  );
+  )
 }
