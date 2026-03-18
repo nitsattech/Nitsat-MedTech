@@ -1,89 +1,75 @@
-import { NextRequest, NextResponse } from 'next/server';
-import sqlite3 from 'sqlite3';
-import bcrypt from 'bcryptjs';
-import path from 'path';
+import { NextResponse } from "next/server"
+import { runQuery, initializeDatabase } from "@/lib/db"
+import bcrypt from "bcryptjs"
 
-const dbPath = path.join(process.cwd(), 'data', 'hospital.db');
+export async function POST(req: Request) {
 
-function getUserByEmail(email: string): Promise<any> {
-  return new Promise((resolve, reject) => {
-    const db = new sqlite3.Database(dbPath);
-    db.get(
-      'SELECT * FROM users WHERE email = ? AND is_active = 1',
-      [email],
-      (err, row) => {
-        db.close();
-        if (err) reject(err);
-        else resolve(row);
-      }
-    );
-  });
+try {
+
+await initializeDatabase()
+
+const { email, password } = await req.json()
+
+const users = await runQuery<any>(`
+SELECT 
+u.id,
+u.email,
+u.full_name,
+u.role,
+u.hospital_id,
+u.password_hash,
+h.name as hospital_name
+
+FROM users u
+
+LEFT JOIN hospitals h
+ON u.hospital_id = h.id
+
+WHERE u.email = ?
+`, [email])
+
+const user = users[0]
+
+if (!user) {
+return NextResponse.json(
+{ error: "User not found" },
+{ status: 401 }
+)
 }
 
-export async function POST(request: NextRequest) {
-  try {
-    const { email, password } = await request.json();
+const valid = await bcrypt.compare(password, user.password_hash)
 
-    if (!email || !password) {
-      return NextResponse.json(
-        { error: 'Email and password are required' },
-        { status: 400 }
-      );
-    }
+if (!valid) {
+return NextResponse.json(
+{ error: "Invalid password" },
+{ status: 401 }
+)
+}
 
-    const user = await getUserByEmail(email);
+return NextResponse.json({
 
-    if (!user) {
-      return NextResponse.json(
-        { error: 'Invalid email or password' },
-        { status: 401 }
-      );
-    }
+user: {
+id: user.id,
+name: user.full_name,
+role: user.role
+},
 
-    const isMatch = await bcrypt.compare(password, user.password_hash);
+hospital: {
+id: user.hospital_id,
+name: user.hospital_name
+}
 
-    if (!isMatch) {
-      return NextResponse.json(
-        { error: 'Invalid email or password' },
-        { status: 401 }
-      );
-    }
+})
 
-    const response = NextResponse.json({
-      success: true,
-      user: {
-        id: user.id,
-        email: user.email,
-        full_name: user.full_name,
-        role: user.role,
-      },
-    });
+} catch (error) {
 
-    // 🔥 CRITICAL: Global cookies for HMS auth
-    response.cookies.set('userId', String(user.id), {
-      path: '/',
-      httpOnly: true,
-      sameSite: 'lax',
-    });
+console.error("Login error:", error)
 
-    response.cookies.set('userRole', user.role, {
-      path: '/', // VERY IMPORTANT (fixes investigation login issue)
-      httpOnly: false,
-      sameSite: 'lax',
-    });
+return NextResponse.json(
+{ error: "Server error" },
+{ status: 500 }
+)
 
-    response.cookies.set('userEmail', user.email, {
-      path: '/',
-      httpOnly: false,
-      sameSite: 'lax',
-    });
+}
 
-    return response;
-  } catch (error) {
-    console.error('Login error:', error);
-    return NextResponse.json(
-      { error: 'Login failed' },
-      { status: 500 }
-    );
-  }
 }

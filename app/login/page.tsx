@@ -1,173 +1,157 @@
-'use client';
+"use client"
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Card } from '@/components/ui/card';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Heart } from 'lucide-react';
+import { useState } from "react"
+import { useRouter } from "next/navigation"
+import Image from 'next/image'
 
-export default function LoginPage() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-  const router = useRouter();
+export default function LoginPage(){
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
-    setLoading(true);
+const router = useRouter()
 
-    try {
-      const response = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password })
-      });
+const [email,setEmail] = useState("")
+const [password,setPassword] = useState("")
 
-      if (!response.ok) {
-        const data = await response.json();
-        setError(data.error || 'Login failed');
-        setLoading(false);
-        return;
-      }
+const handleLogin = async () => {
 
-      // Redirect to dashboard
-      router.push('/dashboard');
-    } catch (err) {
-      setError('An error occurred. Please try again.');
-      setLoading(false);
-    }
-  };
+const res = await fetch("/api/auth/login",{
+method:"POST",
+headers:{ "Content-Type":"application/json" },
+body:JSON.stringify({email,password})
+})
 
-  const handleLogin = async (e: React.FormEvent) => {
-  e.preventDefault();
-  setLoading(true);
-  setError('');
+const data = await res.json()
 
-  try {
-    const res = await fetch('/api/auth/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password }),
-    });
-
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error);
-
-    // Save role in localStorage
-    localStorage.setItem('user', JSON.stringify(data.user));
-
-    // 🔥 ROLE BASED REDIRECT
-    const role = data.user.role;
-
-if (role === 'admin') {
-  router.push('/dashboard');
-} else if (role === 'doctor') {
-  router.push('/opd-flow');
-} else if (role === 'receptionist') {
-  router.push('/opd-flow');
-} else if (role === 'lab_technician') {
-  router.push('/investigations');
-} else if (role === 'pharmacist') {
-  router.push('/pharmacy');
-} else if (role === 'accountant') {
-  router.push('/billing');
-} else {
-  router.push('/dashboard');
+if(!res.ok){
+alert(data.error || "Login failed")
+return
 }
-  } catch (err: any) {
-    setError(err.message);
-  } finally {
-    setLoading(false);
-  }
-};
 
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-secondary/5 to-background flex items-center justify-center p-4">
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-0 right-0 w-96 h-96 bg-primary/5 rounded-full blur-3xl"></div>
-        <div className="absolute bottom-0 left-0 w-96 h-96 bg-accent/5 rounded-full blur-3xl"></div>
-      </div>
+localStorage.setItem("user",JSON.stringify(data.user))
+localStorage.setItem("hospital",JSON.stringify(data.hospital))
+document.cookie = `userRole=${data.user.role}; path=/`
 
-      <div className="w-full max-w-md relative z-10">
-        {/* Logo Section */}
-        <div className="text-center mb-8">
-          <div className="flex justify-center mb-4">
-            <div className="bg-primary/10 p-4 rounded-xl">
-              <Heart className="w-8 h-8 text-primary" fill="currentColor" />
-            </div>
-          </div>
-          <h1 className="text-3xl font-bold text-foreground mb-2">Nitsat MedTech</h1>
-          <p className="text-muted-foreground">Hospital Management System</p>
-        </div>
+router.push("/dashboard")
 
-        {/* Login Card */}
-        <Card className="p-8 shadow-lg border-border/50">
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div>
-              <label htmlFor="email" className="block text-sm font-medium text-foreground mb-2">
-                Email Address
-              </label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="Enter your email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                disabled={loading}
-                className="h-10"
-              />
-            </div>
+}
 
-            <div>
-              <label htmlFor="password" className="block text-sm font-medium text-foreground mb-2">
-                Password
-              </label>
-              <Input
-                id="password"
-                type="password"
-                placeholder="Enter your password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                disabled={loading}
-                className="h-10"
-              />
-            </div>
+return(
 
-            {error && (
-              <Alert className="bg-destructive/10 border-destructive/20">
-                <AlertDescription className="text-destructive text-sm">{error}</AlertDescription>
-              </Alert>
-            )}
+<div className="h-screen w-screen flex overflow-hidden">
 
-            <Button
-              type="submit"
-              disabled={loading}
-              className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-medium"
-            >
-              {loading ? 'Logging in...' : 'Login'}
-            </Button>
-          </form>
+{/* LEFT SIDE IMAGE */}
 
-          <div className="mt-6 pt-6 border-t border-border/50">
-            <Alert className="bg-accent/10 border-accent/30">
-              <AlertDescription className="text-xs">
-                Demo Mode: Use any email and password to login and explore the system
-              </AlertDescription>
-            </Alert>
-          </div>
-        </Card>
+<div className="w-1/2 relative">
 
-        {/* Footer */}
-        <p className="text-center text-xs text-muted-foreground mt-8">
-          © 2026 Nitsat MedTech. All rights reserved.
-        </p>
-      </div>
-    </div>
-  );
+	<Image
+		src="/doctor-login.png"
+		alt="Doctor illustration"
+		fill
+		className="object-cover"
+		priority
+	/>
+
+{/* DARK OVERLAY */}
+
+<div className="absolute inset-0 bg-blue-900/40"></div>
+
+{/* WELCOME CARD */}
+
+<div className="absolute bottom-12 left-12 right-12 bg-blue-600/90 backdrop-blur-md p-8 rounded-xl shadow-2xl text-white">
+
+<div className="flex gap-5 items-start">
+
+<div className="w-1 bg-white/70 h-20"></div>
+
+<div>
+
+<h2 className="text-2xl font-semibold mb-2">
+NITSAT MEDTECH
+</h2>
+
+<p className="text-sm mb-2">
+Welcome to Nitsat Hospital Management System
+</p>
+
+<p className="text-xs opacity-90">
+Cloud based smart HMS platform with OPD, IPD, Lab,
+Pharmacy and Billing integration.
+</p>
+
+</div>
+
+</div>
+
+</div>
+
+</div>
+
+
+{/* RIGHT SIDE LOGIN */}
+
+<div className="w-1/2 flex items-center justify-center 
+bg-gradient-to-br from-red-100 via-blue-300 to-red-200 relative overflow-hidden">
+<div className="bg-white-80 backdrop-blur-md p-10 rounded-xl shadow-2xl w-[420px] transition-all duration-300 hover:shadow-[0_20px_60px_rgba(0,0,0,0.2)]">
+
+{/* LOGO */}
+
+<div className="flex items-center mb-6">
+
+	<div className="relative h-8 w-8 mr-2 flex-shrink-0">
+		<Image src="/r.png.avif" alt="Nitsat logo" fill className="object-contain" />
+	</div>
+
+	<span className="font-semibold text-gray-700 text-lg">
+		NITSAT
+	</span>
+
+</div>
+
+
+<h2 className="text-xl font-semibold mb-1">
+Login
+</h2>
+
+<p className="text-gray-400 text-sm mb-6">
+Enter your credentials to login to your account
+</p>
+
+
+<input
+type="email"
+placeholder="Email"
+value={email}
+onChange={(e)=>setEmail(e.target.value)}
+className="border border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none rounded w-full p-3 mb-4 transition"
+/>
+
+
+<input
+type="password"
+placeholder="Password"
+value={password}
+onChange={(e)=>setPassword(e.target.value)}
+className="border border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-200 outline-none rounded w-full p-3 mb-5 transition"
+/>
+
+
+<button
+onClick={handleLogin}
+className="bg-blue-600 hover:bg-blue-700 transition text-white w-full p-3 rounded-lg shadow-lg"
+>
+Sign In
+</button>
+
+
+<p className="text-sm text-blue-600 mt-4 cursor-pointer">
+Forgot Password?
+</p>
+
+</div>
+
+</div>
+
+</div>
+
+)
+
 }

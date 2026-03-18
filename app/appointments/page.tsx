@@ -1,62 +1,82 @@
 'use client'
 
-import { useRouter } from 'next/navigation'
+import { useState } from "react"
 
-export default function AppointmentList(){
+export default function AppointmentPage(){
 
-const router=useRouter()
+const [form,setForm] = useState({
+
+name:"",
+mobile:"",
+age:"",
+gender:"Male",
+doctor:"",
+date:""
+
+})
 
 return(
 
 <div className="p-6">
 
-<h1 className="text-xl font-bold mb-4">
-Appointments
+<h1 className="text-2xl font-bold mb-6">
+
+New Appointment
+
 </h1>
 
-<table className="w-full border">
+<div className="grid grid-cols-3 gap-4 bg-white p-6 rounded shadow">
 
-<thead>
+<input
+className="border p-2"
+placeholder="Patient Name"
+onChange={(e)=>setForm({...form,name:e.target.value})}
+/>
 
-<tr>
+<input
+className="border p-2"
+placeholder="Mobile"
+onChange={(e)=>setForm({...form,mobile:e.target.value})}
+/>
 
-<th>Patient</th>
-<th>Mobile</th>
-<th>Status</th>
-<th>Action</th>
+<input
+className="border p-2"
+placeholder="Age"
+onChange={(e)=>setForm({...form,age:e.target.value})}
+/>
 
-</tr>
-
-</thead>
-
-<tbody>
-
-<tr>
-
-<td>Ganesh Kumar</td>
-<td>9999999999</td>
-<td>Pending</td>
-
-<td>
-
-<button
-className="bg-green-500 text-white px-3 py-1"
-onClick={()=>router.push('/opd-flow/1')}
+<select
+className="border p-2"
+onChange={(e)=>setForm({...form,gender:e.target.value})}
 >
 
-Start Visit
+<option>Male</option>
+<option>Female</option>
+
+</select>
+
+<input
+className="border p-2"
+placeholder="Doctor"
+onChange={(e)=>setForm({...form,doctor:e.target.value})}
+/>
+
+<input
+type="date"
+className="border p-2"
+onChange={(e)=>setForm({...form,date:e.target.value})}
+/>
+
+<button className="bg-blue-600 text-white p-3 rounded col-span-3">
+
+Create Appointment
 
 </button>
 
-</td>
-
-</tr>
-
-</tbody>
-
-</table>
+</div>
 
 </div>
 
 )
+
 }
